@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+namespace DrevOps\Sniffs\NamingConventions;
+
+use PHP_CodeSniffer\Files\File;
+
+/**
+ * Enforces snake_case naming for function/method parameters.
+ *
+ * This sniff checks that function and method parameters use snake_case format.
+ * Local variables and class properties are excluded.
+ * Parameters inherited from interfaces/parent classes are also excluded.
+ */
+final class ParameterSnakeCaseSniff extends AbstractSnakeCaseSniff {
+
+  /**
+   * Error code for non-snake_case parameters.
+   */
+  public const string CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
+
+  /**
+   * {@inheritdoc}
+   */
+  public function process(File $phpcsFile, $stackPtr): void {
+    $tokens = $phpcsFile->getTokens();
+    $var_name = ltrim($tokens[$stackPtr]['content'] ?? '', '$');
+
+    // Skip reserved variables (superglobals, $this, etc.).
+    if ($this->isReserved($var_name)) {
+      return;
+    }
+
+    // Only process parameters (declaration only, not usage in body).
+    // Local variables handled by LocalVariableSnakeCaseSniff.
+    if (!$this->isParameter($phpcsFile, $stackPtr, FALSE)) {
+      return;
+    }
+
+    // Skip parameters from inherited/implemented methods as they can't be
+    // changed.
+    if ($this->isInheritedParameter($phpcsFile, $stackPtr)) {
+      return;
+    }
+
+    // Check if the variable name is in snake_case format.
+    if (!$this->isSnakeCase($var_name)) {
+      $suggestion = $this->toSnakeCase($var_name);
+      $error = 'Variable "$%s" is not in snake_case format; try "$%s"';
+      $data = [$var_name, $suggestion];
+
+      $fix = $phpcsFile->addFixableError(
+        $error,
+        $stackPtr,
+        self::CODE_PARAMETER_NOT_SNAKE_CASE,
+        $data
+      );
+
+      // @codeCoverageIgnoreStart
+      // Auto-fix code only executes when running phpcbf (PHP Code Beautifier
+      // and Fixer). Unit tests only check for error detection, not fixing.
+      if ($fix === TRUE) {
+        $phpcsFile->fixer->replaceToken($stackPtr, '$' . $suggestion);
+      }
+      // @codeCoverageIgnoreEnd
+    }
+  }
+
+}

@@ -42,9 +42,15 @@ Run tests with coverage (generates HTML and Cobertura reports in `.logs/`):
 composer test-coverage
 ```
 
+Coverage reports are generated in:
+- HTML: `.logs/.coverage-html/index.html`
+- Cobertura XML: `.logs/cobertura.xml`
+
 Run a single test file:
 ```bash
-./vendor/bin/phpunit tests/Unit/VariableSnakeCaseSniffTest.php
+./vendor/bin/phpunit tests/Unit/AbstractVariableSnakeCaseSniffTest.php
+./vendor/bin/phpunit tests/Unit/LocalVariableSnakeCaseSniffTest.php
+./vendor/bin/phpunit tests/Unit/ParameterSnakeCaseSniffTest.php
 ```
 
 Run only unit tests or functional tests:
@@ -79,10 +85,17 @@ composer normalize --dry-run
 
 ### Directory Structure
 - `src/DrevOps/` - Source code for the PHPCS standard
-  - `Sniffs/NamingConventions/VariableSnakeCaseSniff.php` - Main sniff implementation
+  - `Sniffs/NamingConventions/`
+    - `AbstractSnakeCaseSniff.php` - Base class with shared functionality
+    - `LocalVariableSnakeCaseSniff.php` - Enforces snake_case for local variables
+    - `ParameterSnakeCaseSniff.php` - Enforces snake_case for parameters
   - `ruleset.xml` - DrevOps standard definition
 - `tests/` - PHPUnit tests organized by type:
   - `Unit/` - Unit tests for individual sniff methods (using reflection)
+    - `AbstractVariableSnakeCaseSniffTest.php` - Tests shared base class methods
+    - `LocalVariableSnakeCaseSniffTest.php` - Tests local variable sniff
+    - `ParameterSnakeCaseSniffTest.php` - Tests parameter sniff
+    - `UnitTestCase.php` - Base test class with helper methods
   - `Functional/` - Integration tests that run actual phpcs commands
   - `Fixtures/` - Test fixture files with intentional violations
 - `.github/workflows/` - CI/CD pipelines
@@ -90,27 +103,50 @@ composer normalize --dry-run
 
 ### Sniff Implementation
 
-The `VariableSnakeCaseSniff` class (src/DrevOps/Sniffs/NamingConventions/VariableSnakeCaseSniff.php:16) is the core implementation:
+The standard uses an **abstract base class pattern** with two concrete implementations:
 
-**Key methods:**
+#### AbstractSnakeCaseSniff
+
+Base class (src/DrevOps/Sniffs/NamingConventions/AbstractSnakeCaseSniff.php) containing shared functionality:
+
+**Core methods:**
 - `register()` - Registers T_VARIABLE token for processing
-- `process()` - Main processing logic that checks variable names
 - `isReserved()` - Identifies PHP reserved variables ($this, $_GET, etc.)
-- `isProperty()` - Distinguishes class properties from local variables
-- `isInheritedParameter()` - Detects parameters from interfaces/parent classes
 - `isSnakeCase()` - Validates snake_case format using regex
 - `toSnakeCase()` - Converts camelCase to snake_case for suggestions
 
-**What gets checked:**
-- ✅ Local variables inside functions/methods
-- ✅ Function and method parameters
-- ✅ Closure parameters
-- ❌ Class properties (public, private, protected, static)
-- ❌ Promoted constructor properties
-- ❌ Reserved PHP variables ($this, superglobals, etc.)
-- ❌ Parameters inherited from interfaces/parent classes/abstract methods
+**Helper methods:**
+- `getParameterNames()` - Extracts parameter names from function signature
+- `isInParameterList()` - Checks if variable is in parameter list
+- `findEnclosingFunction()` - Finds the enclosing function/closure for a variable
+- `isPromotedProperty()` - Detects promoted constructor properties
+- `isParameter()` - Checks if variable is a function/method parameter (with flag for body usage)
+- `isProperty()` - Distinguishes class properties from local variables
+- `isInheritedParameter()` - Detects parameters from interfaces/parent classes
 
-**Error code:** `DrevOps.NamingConventions.VariableSnakeCase.VariableNotSnakeCase`
+#### LocalVariableSnakeCaseSniff
+
+Enforces snake_case for **local variables** inside functions/methods.
+
+**What gets checked:**
+- ✅ Local variables inside function/method bodies
+- ❌ Function/method parameters (handled by ParameterSnakeCase)
+- ❌ Class properties (not enforced)
+- ❌ Reserved PHP variables ($this, superglobals, etc.)
+
+**Error code:** `DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
+
+#### ParameterSnakeCaseSniff
+
+Enforces snake_case for **function/method parameters**.
+
+**What gets checked:**
+- ✅ Function and method parameters (in signature only)
+- ❌ Local variables (handled by LocalVariableSnakeCase)
+- ❌ Parameters inherited from interfaces/parent classes/abstract methods
+- ❌ Promoted constructor properties
+
+**Error code:** `DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
 
 ### PHPCS Standard Registration
 
@@ -124,28 +160,60 @@ Verify installation with: `vendor/bin/phpcs -i` (should list "DrevOps")
 
 ### Testing Strategy
 
-This project uses **two complementary testing approaches** (see TESTING.md for details):
+This project uses **two complementary testing approaches**:
 
-1. **Unit Tests** (`tests/Unit/VariableSnakeCaseSniffTest.php`)
-   - Test individual private methods using PHP reflection
-   - Fast execution, easy debugging
-   - Cover: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`
-   - 28 tests covering internal logic
+#### 1. Unit Tests (88 tests, 135 assertions, 100% coverage)
 
-2. **Functional Tests** (`tests/Functional/VariableSnakeCaseSniffFunctionalTest.php`)
-   - Run actual `phpcs` commands as external processes
-   - Test complete PHPCS integration with JSON output parsing
-   - Verify error codes, messages, and detection accuracy
-   - 3 tests covering real-world usage:
-     - `testSniffDetectsViolations()` - Confirms violations are found
-     - `testSniffIgnoresProperties()` - Confirms properties are ignored
-     - `testCleanFilePassesValidation()` - Confirms valid code passes
+Tests are organized by class hierarchy:
+
+**AbstractVariableSnakeCaseSniffTest.php**
+- Tests all shared base class methods using reflection
+- Tests: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`, `getParameterNames()`, `isProperty()`, `isPromotedProperty()`, `isInheritedParameter()`
+- Each test uses concrete sniff instances (LocalVariableSnakeCaseSniff or ParameterSnakeCaseSniff) to access protected methods
+
+**LocalVariableSnakeCaseSniffTest.php**
+- Tests sniff-specific logic: error code constant and `process()` method
+- Configured to run only LocalVariableSnakeCase sniff in isolation
+- Validates that local variables are checked and parameters are skipped
+
+**ParameterSnakeCaseSniffTest.php**
+- Tests sniff-specific logic: error code constant, `register()`, and `process()` method
+- Configured to run only ParameterSnakeCase sniff in isolation
+- Validates that parameters are checked and local variables are skipped
+- Includes tests for inherited parameter detection
+
+**Key testing patterns:**
+- Use PHP reflection to test protected methods
+- Use `processCode()` helper to simulate PHPCS token processing
+- Use `findVariableToken()` and `findFunctionToken()` helpers to locate tokens
+- Each concrete sniff test overrides `setUp()` to configure specific sniff isolation
+
+#### 2. Functional Tests
+
+**LocalVariableSnakeCaseSniffFunctionalTest.php**
+- Run actual `phpcs` commands as external processes
+- Test complete PHPCS integration with JSON output parsing
+- Verify LocalVariableSnakeCase sniff detection and error codes
+
+**ParameterSnakeCaseSniffFunctionalTest.php**
+- Run actual `phpcs` commands as external processes
+- Test complete PHPCS integration with JSON output parsing
+- Verify ParameterSnakeCase sniff detection and error codes
+
+Tests include:
+- Confirms violations are detected with correct error codes
+- Confirms correct exclusions (properties, inherited parameters, etc.)
+- Validates clean code passes without errors
 
 **Test fixtures:**
 - `tests/Fixtures/VariableNaming.php` - Contains intentional violations
 - `tests/Fixtures/InheritedParameters.php` - Tests interface/parent class scenarios
 - `tests/Fixtures/Valid.php` - Clean code for positive testing
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
+
+**Coverage:**
+- Line coverage: 100% (158/158 lines covered)
+- Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools
 
@@ -171,18 +239,23 @@ When implementing or modifying sniffs:
 
 1. Place sniff classes in `src/DrevOps/Sniffs/` following PHPCS naming conventions
    - Format: `CategoryName/SniffNameSniff.php`
-   - Example: `NamingConventions/VariableSnakeCaseSniff.php`
-2. Implement the `Sniff` interface from `PHP_CodeSniffer\Sniffs\Sniff`
-3. Use `declare(strict_types=1);` at the top of all PHP files
-4. Register tokens in `register()` method (return array of T_* constants)
-5. Process tokens in `process(File $phpcsFile, $stackPtr)` method
-6. Use `addFixableError()` for violations that can be auto-fixed with phpcbf
-7. Create both unit tests and functional tests:
-   - Unit tests for internal method logic
+   - Example: `NamingConventions/LocalVariableSnakeCaseSniff.php`
+2. Consider using abstract base classes for shared functionality across related sniffs
+3. Implement the `Sniff` interface from `PHP_CodeSniffer\Sniffs\Sniff`
+4. Use `declare(strict_types=1);` at the top of all PHP files
+5. Register tokens in `register()` method (return array of T_* constants)
+6. Process tokens in `process(File $phpcsFile, $stackPtr)` method
+7. Use `addFixableError()` for violations that can be auto-fixed with phpcbf
+8. Mark auto-fix code blocks with `@codeCoverageIgnore` (not testable in unit tests)
+9. Create both unit tests and functional tests:
+   - Unit tests for internal method logic using reflection
    - Functional tests for complete PHPCS integration
-8. Create fixture files in `tests/Fixtures/` with intentional violations
-9. Follow error code naming: `StandardName.Category.SniffName.ErrorName`
-   - Example: `DrevOps.NamingConventions.VariableSnakeCase.VariableNotSnakeCase`
+   - Organize tests by class hierarchy (abstract base tests separate from concrete tests)
+10. Create fixture files in `tests/Fixtures/` with intentional violations
+11. Follow error code naming: `StandardName.Category.SniffName.ErrorName`
+    - Examples:
+      - `DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
+      - `DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
 
 ## CI/CD
 

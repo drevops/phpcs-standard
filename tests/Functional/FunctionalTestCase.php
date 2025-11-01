@@ -21,6 +21,13 @@ abstract class FunctionalTestCase extends TestCase {
   use AssertArrayTrait;
 
   /**
+   * The sniff source pattern to filter violations.
+   *
+   * Child classes should override this to specify which sniff to test.
+   */
+  protected string $sniffSource = 'DrevOps.NamingConventions.';
+
+  /**
    * {@inheritdoc}
    */
   protected function setUp(): void {
@@ -65,19 +72,13 @@ abstract class FunctionalTestCase extends TestCase {
       timeout: 120
     );
 
-    // Assert process success/failure based on expectation.
-    // PHPCS returns 0 for no violations, non-zero for violations.
-    if (!empty($expected_violations)) {
-      $this->assertProcessFailed('Expected phpcs to find violations');
-    }
-    else {
-      $this->assertProcessSuccessful('Expected phpcs to pass without violations');
-    }
-
     // @phpstan-ignore-next-line
     $output = $this->process->getOutput() . $this->process->getErrorOutput();
     $violations = $this->getPhpcsViolations($output);
 
+    // Note: We don't assert on process exit code because we're filtering
+    // violations by sniff. PHPCS may return non-zero due to violations from
+    // other sniffs in the DrevOps standard.
     $this->assertEquals($expected_violations, $violations, 'Expected violations should be present in PHPCS output');
   }
 
@@ -92,9 +93,24 @@ abstract class FunctionalTestCase extends TestCase {
 
     $violations = isset($file_results['messages']) && is_array($file_results['messages']) ? $file_results['messages'] : [];
 
-    return array_filter($violations, function (mixed $violation): bool {
-      return is_array($violation) && isset($violation['source']) && is_string($violation['source']) && str_contains($violation['source'], 'DrevOps.NamingConventions.VariableSnakeCase');
+    $filtered = array_filter($violations, function (mixed $violation): bool {
+      return is_array($violation) && isset($violation['source']) && is_string($violation['source']) && str_contains($violation['source'], $this->sniffSource);
     });
+
+    // Re-index array to start from 0 for easier comparison.
+    return array_values($filtered);
+  }
+
+  /**
+   * Returns suffix for assertion messages.
+   *
+   * Required by ProcessTrait for assertion context.
+   *
+   * @return string
+   *   Empty string as we don't need custom suffixes.
+   */
+  protected function assertionSuffix(): string {
+    return '';
   }
 
 }

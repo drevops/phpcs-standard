@@ -4,16 +4,46 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
-use DrevOps\Sniffs\NamingConventions\VariableSnakeCaseSniff;
+use PHP_CodeSniffer\Ruleset;
+use DrevOps\Sniffs\NamingConventions\LocalVariableSnakeCaseSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Tests for VariableSnakeCaseSniff::process() method.
+ * Tests for LocalVariableSnakeCaseSniff.
+ *
+ * Tests only sniff-specific logic. Abstract base class methods are tested
+ * in AbstractVariableSnakeCaseSniffTest.
  */
-#[CoversClass(VariableSnakeCaseSniff::class)]
-class VariableSnakeCaseSniffProcessTest extends UnitTestCase {
+#[CoversClass(LocalVariableSnakeCaseSniff::class)]
+class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
 
+  /**
+   * {@inheritdoc}
+   */
+  #[\Override]
+  protected function setUp(): void {
+    parent::setUp();
+    // Configure to run only LocalVariableSnakeCase sniff.
+    $this->config->sniffs = ['DrevOps.NamingConventions.LocalVariableSnakeCase'];
+    $this->ruleset = new Ruleset($this->config);
+  }
+
+  /**
+   * Test error code constant.
+   */
+  public function testErrorCodeConstant(): void {
+    $this->assertSame('NotSnakeCase', LocalVariableSnakeCaseSniff::CODE_VARIABLE_NOT_SNAKE_CASE);
+  }
+
+  /**
+   * Test process method validates local variables.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param bool $should_have_errors
+   *   Whether errors should be detected.
+   */
   #[DataProvider('providerProcessCases')]
   public function testProcess(string $code, bool $should_have_errors): void {
     $file = $this->processCode($code);
@@ -27,6 +57,12 @@ class VariableSnakeCaseSniffProcessTest extends UnitTestCase {
     }
   }
 
+  /**
+   * Data provider for process method tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
   public static function providerProcessCases(): array {
     return [
       'valid_snake_case_variable' => [
@@ -55,7 +91,7 @@ class VariableSnakeCaseSniffProcessTest extends UnitTestCase {
       ],
       'invalid_parameter_name' => [
         '<?php function test($invalidParam) {}',
-        TRUE,
+        FALSE,
       ],
     ];
   }
