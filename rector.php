@@ -52,6 +52,8 @@ return static function (RectorConfig $config): void {
     // Dependencies.
     '*/vendor/*',
     '*/node_modules/*',
+    // Test fixtures (contains intentional violations).
+    '*/tests/Fixtures/*',
   ]);
 
   $config->fileExtensions([

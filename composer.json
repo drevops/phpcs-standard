@@ -1,8 +1,8 @@
 {
     "name": "drevops/phpcs-standard",
-    "description": "Provides phpcs-standard functionality.",
+    "description": "DrevOps PHP_CodeSniffer rules: enforce snake_case for variables and parameters.",
     "license": "GPL-2.0-or-later",
-    "type": "library",
+    "type": "phpcodesniffer-standard",
     "authors": [
         {
             "name": "Alex Skrypnyk",
@@ -17,32 +17,31 @@
         "source": "https://github.com/drevops/phpcs-standard"
     },
     "require": {
-        "php": ">=8.2",
+        "php": ">=8.3",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1",
+        "squizlabs/php_codesniffer": "^3.10"
     },
     "require-dev": {
         "alexskrypnyk/phpunit-helpers": "^0.13.0",
-        "dealerdirect/phpcodesniffer-composer-installer": "^1",
         "drupal/coder": "^8.3",
         "ergebnis/composer-normalize": "^2.42",
-        "mikey179/vfsstream": "^1.6",
-        "opis/closure": "^4.0",
         "phpstan/phpstan": "^2",
-        "phpunit/phpunit": "^11",
+        "phpunit/phpunit": "^12",
         "rector/rector": "^2"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "DrevOps\\App\\": "src/"
+            "DrevOps\\": "src/DrevOps/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DrevOps\\App\\Tests\\": "tests/phpunit"
+            "DrevOps\\PhpcsStandard\\Tests\\": "tests"
         },
         "classmap": [
-            "tests/phpunit"
+            "tests"
         ]
     },
     "config": {
@@ -52,6 +51,11 @@
         },
         "discard-changes": true,
         "sort-packages": true
+    },
+    "extra": {
+        "phpcodesniffer-standard": [
+            "DrevOps"
+        ]
     },
     "scripts": {
         "lint": [
