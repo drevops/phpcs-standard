@@ -36,7 +36,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 20,
+          'line' => 22,
           'column' => 5,
         ],
         [
@@ -45,7 +45,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 21,
+          'line' => 23,
           'column' => 5,
         ],
         [
@@ -54,7 +54,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 22,
+          'line' => 24,
           'column' => 5,
         ],
         [
@@ -63,7 +63,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 43,
+          'line' => 55,
           'column' => 7,
         ],
         [
@@ -72,7 +72,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 45,
+          'line' => 57,
           'column' => 29,
         ],
         [
@@ -81,7 +81,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 57,
+          'line' => 69,
           'column' => 5,
         ],
         [
@@ -90,7 +90,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 66,
+          'line' => 78,
           'column' => 3,
         ],
       ]

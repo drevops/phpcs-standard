@@ -93,6 +93,30 @@ class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
         '<?php function test($invalidParam) {}',
         FALSE,
       ],
+      'static_property_access_self' => [
+        '<?php class Test { public function test() { self::$camelCaseProperty = 1; } }',
+        FALSE,
+      ],
+      'static_property_access_static' => [
+        '<?php class Test { public function test() { static::$camelCaseProperty = 1; } }',
+        FALSE,
+      ],
+      'static_property_access_class_name' => [
+        '<?php class Test { public function test() { Test::$camelCaseProperty = 1; } }',
+        FALSE,
+      ],
+      'instance_property_access_this' => [
+        '<?php class Test { public function test() { $this->camelCaseProperty = 1; } }',
+        FALSE,
+      ],
+      'instance_property_access_object' => [
+        '<?php class Test { public function test() { $obj = new self(); $obj->camelCaseProperty = 1; } }',
+        FALSE,
+      ],
+      'instance_property_read' => [
+        '<?php class Test { public function test() { $value = $this->camelCaseProperty; } }',
+        FALSE,
+      ],
     ];
   }
 

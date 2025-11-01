@@ -31,6 +31,11 @@ final class LocalVariableSnakeCaseSniff extends AbstractSnakeCaseSniff {
       return;
     }
 
+    // Skip static property accesses (self::$prop, static::$prop, etc.).
+    if ($this->isStaticPropertyAccess($phpcsFile, $stackPtr)) {
+      return;
+    }
+
     // Skip class/trait properties - we only check local variables.
     if ($this->isProperty($phpcsFile, $stackPtr)) {
       return;

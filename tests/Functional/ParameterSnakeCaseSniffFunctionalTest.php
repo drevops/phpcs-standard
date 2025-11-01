@@ -36,7 +36,7 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 33,
+          'line' => 45,
           'column' => 66,
         ],
         [
@@ -45,7 +45,7 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 40,
+          'line' => 52,
           'column' => 40,
         ],
         [
@@ -54,7 +54,7 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
           'severity' => 5,
           'fixable' => TRUE,
           'type' => 'ERROR',
-          'line' => 63,
+          'line' => 75,
           'column' => 59,
         ],
       ]
