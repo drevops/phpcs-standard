@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+<ruleset name="DrevOps">
+    <description>DrevOps PHP_CodeSniffer standard.</description>
+
+    <!-- Enforce snake_case for local variables and function parameters -->
+    <rule ref="DrevOps.NamingConventions.VariableSnakeCase"/>
+</ruleset>

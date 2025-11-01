@@ -8,10 +8,10 @@ parameters:
 
   paths:
     - src
-    - tests/phpunit
+    - tests
 
-  excludePaths:
-    - vendor/*
+  scanDirectories:
+    - vendor/squizlabs/php_codesniffer
 
   ignoreErrors:
     -
@@ -19,5 +19,10 @@ parameters:
       # it is not possible to specify the type of the parameter, so we ignore
       # this error.
       message: '#.*no value type specified in iterable type array.#'
-      path: tests/phpunit/*
+      path: tests/*
+      reportUnmatched: false
+    -
+      # Ignore test fixture issues (intentional violations).
+      message: '#.*#'
+      path: tests/Fixtures/*
       reportUnmatched: false
