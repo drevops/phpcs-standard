@@ -1,0 +1,70 @@
+{
+    "name": "drevops/phpcs-standard",
+    "description": "Provides phpcs-standard functionality.",
+    "license": "GPL-2.0-or-later",
+    "type": "library",
+    "authors": [
+        {
+            "name": "Alex Skrypnyk",
+            "email": "alex@drevops.com",
+            "homepage": "https://github.com/alexskrypnyk",
+            "role": "Maintainer"
+        }
+    ],
+    "homepage": "https://github.com/drevops/phpcs-standard",
+    "support": {
+        "issues": "https://github.com/drevops/phpcs-standard/issues",
+        "source": "https://github.com/drevops/phpcs-standard"
+    },
+    "require": {
+        "php": ">=8.2",
+    },
+    "require-dev": {
+        "alexskrypnyk/phpunit-helpers": "^0.13.0",
+        "dealerdirect/phpcodesniffer-composer-installer": "^1",
+        "drupal/coder": "^8.3",
+        "ergebnis/composer-normalize": "^2.42",
+        "mikey179/vfsstream": "^1.6",
+        "opis/closure": "^4.0",
+        "phpstan/phpstan": "^2",
+        "phpunit/phpunit": "^11",
+        "rector/rector": "^2"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "autoload": {
+        "psr-4": {
+            "DrevOps\\App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "DrevOps\\App\\Tests\\": "tests/phpunit"
+        },
+        "classmap": [
+            "tests/phpunit"
+        ]
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true,
+            "ergebnis/composer-normalize": true
+        },
+        "discard-changes": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "lint": [
+            "phpcs",
+            "phpstan",
+            "rector --dry-run"
+        ],
+        "lint-fix": [
+            "rector",
+            "phpcbf"
+        ],
+        "reset": "rm -Rf vendor composer.lock",
+        "test": "phpunit --no-coverage",
+        "test-coverage": "phpunit"
+    }
+}
