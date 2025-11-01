@@ -261,6 +261,41 @@ abstract class AbstractSnakeCaseSniff implements Sniff {
   }
 
   /**
+   * Check if a variable is a static property access.
+   *
+   * Static properties are accessed with :: (T_DOUBLE_COLON) like:
+   * - self::$property
+   * - static::$property
+   * - ClassName::$property.
+   *
+   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   *   The file being scanned.
+   * @param int $stackPtr
+   *   The position of the variable token.
+   *
+   * @return bool
+   *   TRUE if static property access, FALSE otherwise.
+   */
+  protected function isStaticPropertyAccess(File $phpcsFile, int $stackPtr): bool {
+    $tokens = $phpcsFile->getTokens();
+
+    // Find the previous non-whitespace token.
+    $prev_token = $phpcsFile->findPrevious(T_WHITESPACE, $stackPtr - 1, NULL, TRUE);
+
+    if ($prev_token !== FALSE) {
+      // If preceded by :: (T_DOUBLE_COLON), it's a static property access.
+      return $tokens[$prev_token]['code'] === T_DOUBLE_COLON;
+    }
+
+    // @codeCoverageIgnoreStart
+    // This is unreachable in valid PHP code - findPrevious() will always find
+    // at least one token (e.g., T_OPEN_TAG, T_EQUAL) before any variable.
+    // This return is defensive code for malformed token streams.
+    return FALSE;
+    // @codeCoverageIgnoreEnd
+  }
+
+  /**
    * Check if a variable is preceded by a visibility modifier.
    *
    * This indicates a promoted constructor property.

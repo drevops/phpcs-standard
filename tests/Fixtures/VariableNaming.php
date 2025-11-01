@@ -12,6 +12,8 @@ class ClassWithMixedVariableNaming {
 
   public static $static_property_ignored;
 
+  public static $camelCaseStaticProperty;
+
   public function methodWithMixedLocalVariables(): void {
     $valid_snake_case_local = 'valid';
     $another_valid_local = 123;
@@ -21,9 +23,19 @@ class ClassWithMixedVariableNaming {
     $anotherInvalid = 123;
     $testCamelCase = 'invalid';
 
+    // Instance property accesses should be ignored.
     $this->propertyIgnoredCamelCase = 'value';
+    $this->anotherCamelCaseProperty = 'value';
+    $value = $this->propertyIgnoredCamelCase;
+
     $_SERVER['test'] = 'value';
     $_GET['key'] = 'value';
+
+    // Static property accesses should be ignored.
+    self::$static_property_ignored = 'value';
+    self::$camelCaseStaticProperty = 'value';
+    static::$static_property_ignored = 'value';
+    ClassWithMixedVariableNaming::$camelCaseStaticProperty = 'value';
 
     if (isset($_POST['data'])) {
       $valid_data = $_POST['data'];

@@ -408,4 +408,71 @@ class AbstractVariableSnakeCaseSniffTest extends UnitTestCase {
     ];
   }
 
+  /**
+   * Test isStaticPropertyAccess method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param bool $expected
+   *   Expected result.
+   */
+  #[DataProvider('providerIsStaticPropertyAccess')]
+  public function testIsStaticPropertyAccess(string $code, string $variable_name, bool $expected): void {
+    $file = $this->processCode($code);
+    $variable_ptr = $this->findVariableToken($file, $variable_name);
+    $sniff = new LocalVariableSnakeCaseSniff();
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('isStaticPropertyAccess');
+    $result = $method->invoke($sniff, $file, $variable_ptr);
+    $this->assertSame($expected, $result);
+  }
+
+  /**
+   * Data provider for isStaticPropertyAccess tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function providerIsStaticPropertyAccess(): array {
+    return [
+      'self_static_property' => [
+        '<?php class Test { public function test() { self::$property = 1; } }',
+        'property',
+        TRUE,
+      ],
+      'static_keyword_property' => [
+        '<?php class Test { public function test() { static::$property = 1; } }',
+        'property',
+        TRUE,
+      ],
+      'class_name_property' => [
+        '<?php class Test { public function test() { Test::$property = 1; } }',
+        'property',
+        TRUE,
+      ],
+      'parent_static_property' => [
+        '<?php class Test { public function test() { parent::$property = 1; } }',
+        'property',
+        TRUE,
+      ],
+      'local_variable' => [
+        '<?php class Test { public function test() { $variable = 1; } }',
+        'variable',
+        FALSE,
+      ],
+      'parameter' => [
+        '<?php function test($parameter) {}',
+        'parameter',
+        FALSE,
+      ],
+      'property_declaration' => [
+        '<?php class Test { public static $property; }',
+        'property',
+        FALSE,
+      ],
+    ];
+  }
+
 }
