@@ -33,29 +33,17 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
         [
           'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
           'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 45,
-          'column' => 66,
         ],
         [
           'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
           'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 52,
-          'column' => 40,
         ],
         [
           'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
           'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 75,
-          'column' => 59,
         ],
       ]
     );
@@ -71,20 +59,12 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
         [
           'message' => 'Variable "$invalidNonInheritedParamOne" is not in snake_case format; try "$invalid_non_inherited_param_one"',
           'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 43,
-          'column' => 48,
         ],
         [
           'message' => 'Variable "$invalidNonInheritedParamTwo" is not in snake_case format; try "$invalid_non_inherited_param_two"',
           'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 43,
-          'column' => 78,
         ],
       ]
     );

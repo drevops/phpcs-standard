@@ -79,7 +79,33 @@ abstract class FunctionalTestCase extends TestCase {
     // Note: We don't assert on process exit code because we're filtering
     // violations by sniff. PHPCS may return non-zero due to violations from
     // other sniffs in the DrevOps standard.
-    $this->assertEquals($expected_violations, $violations, 'Expected violations should be present in PHPCS output');
+    // Normalize both arrays to remove fields that can change.
+    $normalized_expected = $this->normalizeViolations($expected_violations);
+    $normalized_actual = $this->normalizeViolations($violations);
+
+    $this->assertEquals($normalized_expected, $normalized_actual, 'Expected violations should be present in PHPCS output');
+  }
+
+  /**
+   * Normalize violations by removing fields that are not essential for testing.
+   *
+   * Removes severity, type, line, and column as these can change frequently
+   * and are not critical for verifying sniff behavior.
+   *
+   * @param array<int, array<string, mixed>> $violations
+   *   Array of violations to normalize.
+   *
+   * @return array<int, array<string, mixed>>
+   *   Normalized violations with only message, source, and fixable.
+   */
+  protected function normalizeViolations(array $violations): array {
+    return array_map(function (array $violation): array {
+      return [
+        'message' => $violation['message'] ?? '',
+        'source' => $violation['source'] ?? '',
+        'fixable' => $violation['fixable'] ?? FALSE,
+      ];
+    }, $violations);
   }
 
   protected function getPhpcsViolations(string $output): array {

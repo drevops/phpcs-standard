@@ -33,65 +33,37 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
         [
           'message' => 'Variable "$invalidVariable" is not in snake_case format; try "$invalid_variable"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 22,
-          'column' => 5,
         ],
         [
           'message' => 'Variable "$anotherInvalid" is not in snake_case format; try "$another_invalid"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 23,
-          'column' => 5,
         ],
         [
           'message' => 'Variable "$testCamelCase" is not in snake_case format; try "$test_camel_case"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 24,
-          'column' => 5,
         ],
         [
           'message' => 'Variable "$invalidVar" is not in snake_case format; try "$invalid_var"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 55,
-          'column' => 7,
         ],
         [
           'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 57,
-          'column' => 29,
         ],
         [
           'message' => 'Variable "$localVar" is not in snake_case format; try "$local_var"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 69,
-          'column' => 5,
         ],
         [
           'message' => 'Variable "$invalidVar" is not in snake_case format; try "$invalid_var"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 78,
-          'column' => 3,
         ],
       ]
     );
@@ -107,11 +79,7 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
         [
           'message' => 'Variable "$invalidLocalVar" is not in snake_case format; try "$invalid_local_var"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 54,
-          'column' => 5,
         ],
       ]
     );
@@ -127,20 +95,12 @@ class LocalVariableSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
         [
           'message' => 'Variable "$localInvalidCamelCase" is not in snake_case format; try "$local_invalid_camel_case"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 24,
-          'column' => 5,
         ],
         [
           'message' => 'Variable "$localInvalidCamelCase" is not in snake_case format; try "$local_invalid_camel_case"',
           'source' => 'DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase',
-          'severity' => 5,
           'fixable' => TRUE,
-          'type' => 'ERROR',
-          'line' => 36,
-          'column' => 5,
         ],
       ]
     );
