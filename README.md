@@ -18,131 +18,111 @@
 </div>
 
 ---
-
-## Features
-
-- Enforces `snake_case` naming for local variables and function/method
-  parameters
-- Intentionally excludes class properties from enforcement (properties can
-  follow different conventions)
-- Preserves inherited parameter names from interfaces and parent classes
-- Provides helpful suggestions for converting variable names to `snake_case`
-- Supports auto-fixing with `phpcbf` - automatically converts variables to
-  snake_case
-- Automatically registered as a PHPCS standard via Composer plugin
+PHP_CodeSniffer standard enforcing `snake_case` naming for local variables and function/method parameters. Class properties are intentionally excluded.
 
 ## Installation
 
-    composer require --dev drevops/phpcs-standard
+```bash
+composer require --dev drevops/phpcs-standard
+```
 
-The standard will be automatically registered by
-the [dealerdirect/phpcodesniffer-composer-installer](https://github.com/PHPCSStandards/composer-installer)
-plugin.
+The standard is automatically registered via [phpcodesniffer-composer-installer](https://github.com/PHPCSStandards/composer-installer).
 
-Verify installation:
-
-    vendor/bin/phpcs -i
-
-You should see `DrevOps` in the list of installed coding standards.
+Verify: `vendor/bin/phpcs -i` (should list `DrevOps`)
 
 ## Usage
 
-### Command Line
+```bash
+# Check code
+vendor/bin/phpcs --standard=DrevOps path/to/code
 
-Check a file or directory:
+# Auto-fix
+vendor/bin/phpcbf --standard=DrevOps path/to/code
+```
 
-    vendor/bin/phpcs --standard=DrevOps path/to/code
+## Configuration
 
-Check a specific file:
-
-    vendor/bin/phpcs --standard=DrevOps src/MyClass.php
-
-Auto-fix violations:
-
-    vendor/bin/phpcbf --standard=DrevOps path/to/code
-
-### Configuration File
-
-Create a `phpcs.xml` file in your project root:
+Create `phpcs.xml`:
 
 ```xml
 <?xml version="1.0"?>
-<ruleset name="Project Coding Standards">
-  <description>My project coding standards</description>
-
-  <!-- Use the DrevOps standard -->
+<ruleset name="Project Standards">
   <rule ref="DrevOps"/>
-
-  <!-- Scan these directories -->
   <file>src</file>
   <file>tests</file>
 </ruleset>
 ```
 
-Then run:
-
-    vendor/bin/phpcs
-
-### Integrating with Existing Standards
-
-You can combine the DrevOps standard with other standards:
+Use individual sniffs:
 
 ```xml
-<?xml version="1.0"?>
-<ruleset name="My Standards">
-  <!-- Include Drupal standards -->
-  <rule ref="Drupal"/>
-
-  <!-- Add DrevOps variable naming enforcement -->
-  <rule ref="DrevOps.NamingConventions.VariableSnakeCase"/>
+<ruleset name="Custom Standards">
+  <rule ref="DrevOps.NamingConventions.LocalVariableSnakeCase"/>
+  <rule ref="DrevOps.NamingConventions.ParameterSnakeCase"/>
 </ruleset>
 ```
 
-## What Gets Checked
+## `LocalVariableSnakeCase`
 
-✅ **Checked (must be snake_case):**
-
-- Local variables: `$user_name`, `$is_valid`, `$product_id`
-- Function parameters: `function processOrder($order_id, $customer_data)`
-- Method parameters: `public function save($entity_type, $entity_data)`
-- Closure parameters: `array_map(function ($item_value) { ... }, $array)`
-
-❌ **NOT Checked (ignored):**
-
-- Class properties: `public $userName`, `private $customProperty`
-- Static properties: `public static $instanceCount`
-- Promoted constructor properties: `public function __construct(public string $propertyName)`
-- Reserved PHP variables: `$this`, `$_GET`, `$_POST`, `$GLOBALS`, etc.
-
-## Error Codes
-
-- `DrevOps.NamingConventions.VariableSnakeCase.VariableNotSnakeCase` - variable
-  is not in snake_case format
-
-You can ignore specific violations using:
+Enforces `snake_case` for local variables inside functions/methods.
 
 ```php
-// phpcs:ignore DrevOps.NamingConventions.VariableSnakeCase.VariableNotSnakeCase
+function processOrder() {
+    $order_id = 1;        // ✓ Valid
+    $orderId = 1;         // ✗ Error: VariableNotSnakeCase
+}
+```
+
+Excludes:
+- Function/method parameters (handled by `ParameterSnakeCase`)
+- Class properties (not enforced)
+- Reserved variables (`$this`, `$_GET`, `$_POST`, etc.)
+
+### Error code
+
+`DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
+
+### Ignore
+
+```php
+// phpcs:ignore DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase
 $myVariable = 'value';
 ```
 
-## Maintenance
+## `ParameterSnakeCase`
 
-Install dependencies:
+Enforces `snake_case` for function/method parameters.
 
-    composer install
+```php
+function processOrder($order_id, $user_data) {  // ✓ Valid
+function processOrder($orderId, $userData) {    // ✗ Error: ParameterNotSnakeCase
+```
 
-Run tests:
+Excludes:
+- Parameters inherited from interfaces/parent classes
+- Parameters in interface/abstract method declarations
+- Class properties (including promoted constructor properties)
 
-    composer test
+### Error code
 
-Run linting:
+`DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
 
-    composer lint
+### Ignore
 
-Fix auto-fixable issues:
+```php
+// phpcs:ignore DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase
+function process($legacyParam) {}
+```
 
-    composer lint-fix
+## Development
+
+```bash
+composer install       # Install dependencies
+composer test          # Run tests
+composer test-coverage # Run tests with coverage
+composer lint          # Check code standards
+composer lint-fix      # Fix code standards
+```
 
 ## License
 
