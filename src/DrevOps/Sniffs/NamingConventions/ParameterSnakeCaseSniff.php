@@ -18,7 +18,7 @@ final class ParameterSnakeCaseSniff extends AbstractSnakeCaseSniff {
   /**
    * Error code for non-snake_case parameters.
    */
-  public const string CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
+  public const CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
 
   /**
    * {@inheritdoc}
