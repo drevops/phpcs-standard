@@ -17,7 +17,7 @@
         "source": "https://github.com/drevops/phpcs-standard"
     },
     "require": {
-        "php": ">=8.3",
+        "php": ">=8.2",
         "dealerdirect/phpcodesniffer-composer-installer": "^1",
         "squizlabs/php_codesniffer": "^3.10"
     },

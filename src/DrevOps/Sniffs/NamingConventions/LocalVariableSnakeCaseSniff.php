@@ -17,7 +17,7 @@ final class LocalVariableSnakeCaseSniff extends AbstractSnakeCaseSniff {
   /**
    * Error code for non-snake_case variables.
    */
-  public const string CODE_VARIABLE_NOT_SNAKE_CASE = 'NotSnakeCase';
+  public const CODE_VARIABLE_NOT_SNAKE_CASE = 'NotSnakeCase';
 
   /**
    * {@inheritdoc}
