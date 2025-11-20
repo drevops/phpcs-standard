@@ -68,7 +68,7 @@ abstract class FunctionalTestCase extends TestCase {
     // Run phpcs using ProcessTrait.
     $this->processRun(
       $phpcs_bin,
-      ['--standard=DrevOps', '--report=json', $file_path],
+      ['--standard=DrevOps', '--report=json', '-q', $file_path],
       timeout: 120
     );
 
