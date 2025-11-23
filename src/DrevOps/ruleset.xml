@@ -7,4 +7,21 @@
 
     <!-- Enforce snake_case for function/method parameters -->
     <rule ref="DrevOps.NamingConventions.ParameterSnakeCase"/>
+
+    <!-- Enforce data provider naming conventions -->
+    <rule ref="DrevOps.TestingPractices.DataProviderPrefix">
+        <properties>
+            <property name="prefix" value="dataProvider"/>
+        </properties>
+    </rule>
+
+    <!-- Enforce data provider names match test method names -->
+    <rule ref="DrevOps.TestingPractices.DataProviderMatchesTestName"/>
+
+    <!-- Enforce data providers appear after test methods -->
+    <rule ref="DrevOps.TestingPractices.DataProviderOrder">
+        <properties>
+            <property name="providerPosition" value="after"/>
+        </properties>
+    </rule>
 </ruleset>
