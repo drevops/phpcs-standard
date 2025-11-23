@@ -18,7 +18,9 @@
 </div>
 
 ---
-PHP_CodeSniffer standard enforcing `snake_case` naming for local variables and function/method parameters. Class properties are intentionally excluded.
+PHP_CodeSniffer standard enforcing:
+- `snake_case` naming for local variables and function/method parameters
+- PHPUnit data provider naming conventions and organization
 
 ## Installation
 
@@ -57,8 +59,14 @@ Use individual sniffs:
 
 ```xml
 <ruleset name="Custom Standards">
+  <!-- Naming Conventions -->
   <rule ref="DrevOps.NamingConventions.LocalVariableSnakeCase"/>
   <rule ref="DrevOps.NamingConventions.ParameterSnakeCase"/>
+
+  <!-- Testing Practices -->
+  <rule ref="DrevOps.TestingPractices.DataProviderPrefix"/>
+  <rule ref="DrevOps.TestingPractices.DataProviderMatchesTestName"/>
+  <rule ref="DrevOps.TestingPractices.DataProviderOrder"/>
 </ruleset>
 ```
 
@@ -112,6 +120,160 @@ Excludes:
 ```php
 // phpcs:ignore DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase
 function process($legacyParam) {}
+```
+
+## `DataProviderPrefix`
+
+Enforces consistent naming prefix for PHPUnit data provider methods.
+
+```php
+class MyTest extends TestCase {
+    /**
+     * @dataProvider dataProviderUserLogin
+     */
+    public function testUserLogin($data) {}
+
+    public function dataProviderUserLogin() {  // ✓ Valid
+        return [];
+    }
+
+    public function providerUserLogin() {      // ✗ Error: InvalidPrefix
+        return [];
+    }
+}
+```
+
+### Configuration
+
+Customize the required prefix:
+
+```xml
+<rule ref="DrevOps.TestingPractices.DataProviderPrefix">
+    <properties>
+        <property name="prefix" value="dataProvider"/>
+    </properties>
+</rule>
+```
+
+### Error code
+
+`DrevOps.TestingPractices.DataProviderPrefix.InvalidPrefix`
+
+### Ignore
+
+```php
+// phpcs:ignore DrevOps.TestingPractices.DataProviderPrefix.InvalidPrefix
+public function providerCustom() {}
+```
+
+### Auto-fixing
+
+This sniff supports auto-fixing with `phpcbf`:
+- Renames provider methods to use the correct prefix
+- Updates all `@dataProvider` annotations to reference the new name
+
+## `DataProviderMatchesTestName`
+
+Ensures data provider method names match their test method names.
+
+```php
+class MyTest extends TestCase {
+    /**
+     * @dataProvider dataProviderUserLogin
+     */
+    public function testUserLogin($data) {}
+
+    public function dataProviderUserLogin() {  // ✓ Valid - ends with "UserLogin"
+        return [];
+    }
+
+    public function dataProviderLogin() {      // ✗ Error: InvalidProviderName
+        return [];                              //   Expected: ends with "UserLogin"
+    }
+}
+```
+
+Supported formats:
+- `@dataProvider` annotations
+- `#[DataProvider('methodName')]` attributes (PHP 8+)
+
+Excludes:
+- External providers (`ClassName::methodName`)
+- Non-test methods
+- Non-test classes
+
+### Error code
+
+`DrevOps.TestingPractices.DataProviderMatchesTestName.InvalidProviderName`
+
+### Ignore
+
+```php
+// phpcs:ignore DrevOps.TestingPractices.DataProviderMatchesTestName.InvalidProviderName
+public function dataProviderCustomName() {}
+```
+
+## `DataProviderOrder`
+
+Enforces structural organization of test and data provider methods.
+
+```php
+class MyTest extends TestCase {
+    // ✓ Valid - provider after test (default)
+    /**
+     * @dataProvider dataProviderUserLogin
+     */
+    public function testUserLogin($data) {}
+
+    public function dataProviderUserLogin() {
+        return [];
+    }
+}
+```
+
+Helper methods between tests and providers are allowed:
+
+```php
+class MyTest extends TestCase {
+    /**
+     * @dataProvider dataProviderUserLogin
+     */
+    public function testUserLogin($data) {}
+
+    private function helperMethod() {}  // ✓ Allowed
+
+    public function dataProviderUserLogin() {
+        return [];
+    }
+}
+```
+
+### Configuration
+
+Reverse the ordering (provider before test):
+
+```xml
+<rule ref="DrevOps.TestingPractices.DataProviderOrder">
+    <properties>
+        <property name="providerPosition" value="before"/>
+    </properties>
+</rule>
+```
+
+Options:
+- `after` (default) - Providers must appear after their test methods
+- `before` - Providers must appear before their test methods
+
+### Error codes
+
+- `DrevOps.TestingPractices.DataProviderOrder.ProviderBeforeTest` - Provider appears before test (when `providerPosition="after"`)
+- `DrevOps.TestingPractices.DataProviderOrder.ProviderAfterTest` - Provider appears after test (when `providerPosition="before"`)
+
+### Ignore
+
+```php
+// phpcs:ignore DrevOps.TestingPractices.DataProviderOrder.ProviderBeforeTest
+public function dataProviderUserLogin() {}
 ```
 
 ## Development
