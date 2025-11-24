@@ -19,7 +19,7 @@
 
 ---
 PHP_CodeSniffer standard enforcing:
-- Consistent naming conventions for local variables and function/method parameters (configurable: `snakeCase` or `camelCase`)
+- `snake_case` naming for local variables and function/method parameters
 - PHPUnit data provider naming conventions and organization
 
 ## Installation
@@ -60,8 +60,8 @@ Use individual sniffs:
 ```xml
 <ruleset name="Custom Standards">
   <!-- Naming Conventions -->
-  <rule ref="DrevOps.NamingConventions.LocalVariableNaming"/>
-  <rule ref="DrevOps.NamingConventions.ParameterNaming"/>
+  <rule ref="DrevOps.NamingConventions.LocalVariableSnakeCase"/>
+  <rule ref="DrevOps.NamingConventions.ParameterSnakeCase"/>
 
   <!-- Testing Practices -->
   <rule ref="DrevOps.TestingPractices.DataProviderPrefix"/>
@@ -70,77 +70,40 @@ Use individual sniffs:
 </ruleset>
 ```
 
-### Configure naming convention
+## `LocalVariableSnakeCase`
 
-By default, both sniffs enforce `snakeCase`. Configure to use `camelCase`:
+Enforces `snake_case` for local variables inside functions/methods.
 
-```xml
-<ruleset name="Custom Standards">
-  <rule ref="DrevOps.NamingConventions.LocalVariableNaming">
-    <properties>
-      <property name="format" value="camelCase"/>
-    </properties>
-  </rule>
-
-  <rule ref="DrevOps.NamingConventions.ParameterNaming">
-    <properties>
-      <property name="format" value="camelCase"/>
-    </properties>
-  </rule>
-</ruleset>
-```
-
-## `LocalVariableNaming`
-
-Enforces consistent naming convention for local variables inside functions/methods.
-
-**With `snakeCase` (default):**
 ```php
 function processOrder() {
     $order_id = 1;        // ✓ Valid
-    $orderId = 1;         // ✗ Error: NotSnakeCase
-}
-```
-
-**With `camelCase`:**
-```php
-function processOrder() {
-    $orderId = 1;         // ✓ Valid
-    $order_id = 1;        // ✗ Error: NotCamelCase
+    $orderId = 1;         // ✗ Error: VariableNotSnakeCase
 }
 ```
 
 Excludes:
-- Function/method parameters (handled by `ParameterNaming`)
+- Function/method parameters (handled by `ParameterSnakeCase`)
 - Class properties (not enforced)
 - Reserved variables (`$this`, `$_GET`, `$_POST`, etc.)
 
-### Error codes
+### Error code
 
-- `DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase` (when `format="snakeCase"`)
-- `DrevOps.NamingConventions.LocalVariableNaming.NotCamelCase` (when `format="camelCase"`)
+`DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
 
 ### Ignore
 
 ```php
-// phpcs:ignore DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase
+// phpcs:ignore DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase
 $myVariable = 'value';
 ```
 
-## `ParameterNaming`
+## `ParameterSnakeCase`
 
-Enforces consistent naming convention for function/method parameters.
+Enforces `snake_case` for function/method parameters.
 
-**With `snakeCase` (default):**
 ```php
 function processOrder($order_id, $user_data) {  // ✓ Valid
-function processOrder($orderId, $userData) {    // ✗ Error: NotSnakeCase
-```
-
-**With `camelCase`:**
-```php
-function processOrder($orderId, $userData) {    // ✓ Valid
-function processOrder($order_id, $user_data) {  // ✗ Error: NotCamelCase
+function processOrder($orderId, $userData) {    // ✗ Error: ParameterNotSnakeCase
 ```
 
 Excludes:
@@ -148,15 +111,14 @@ Excludes:
 - Parameters in interface/abstract method declarations
 - Class properties (including promoted constructor properties)
 
-### Error codes
+### Error code
 
-- `DrevOps.NamingConventions.ParameterNaming.NotSnakeCase` (when `format="snakeCase"`)
-- `DrevOps.NamingConventions.ParameterNaming.NotCamelCase` (when `format="camelCase"`)
+`DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
 
 ### Ignore
 
 ```php
-// phpcs:ignore DrevOps.NamingConventions.ParameterNaming.NotSnakeCase
+// phpcs:ignore DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase
 function process($legacyParam) {}
 ```
 

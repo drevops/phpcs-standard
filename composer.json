@@ -1,19 +1,8 @@
 {
     "name": "drevops/phpcs-standard",
-    "description": "DrevOps PHP_CodeSniffer rules: enforce consistent naming (snakeCase or camelCase) for variables and parameters, PHPUnit data provider conventions.",
+    "description": "DrevOps PHP_CodeSniffer rules: enforce snake_case for variables and parameters.",
     "license": "GPL-2.0-or-later",
     "type": "phpcodesniffer-standard",
-    "keywords": [
-        "phpcs",
-        "phpcodesniffer",
-        "standards",
-        "snakeCase",
-        "camelCase",
-        "naming-conventions",
-        "code-quality",
-        "phpunit",
-        "data-providers"
-    ],
     "authors": [
         {
             "name": "Alex Skrypnyk",

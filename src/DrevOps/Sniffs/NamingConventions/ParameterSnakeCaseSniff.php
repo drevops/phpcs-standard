@@ -7,24 +7,18 @@ namespace DrevOps\Sniffs\NamingConventions;
 use PHP_CodeSniffer\Files\File;
 
 /**
- * Enforces consistent naming convention for function/method parameters.
+ * Enforces snake_case naming for function/method parameters.
  *
- * This sniff checks that function and method parameters use the configured
- * naming format (snakeCase or camelCase). Local variables and class properties
- * are excluded. Parameters inherited from interfaces/parent classes are also
- * excluded.
+ * This sniff checks that function and method parameters use snake_case format.
+ * Local variables and class properties are excluded.
+ * Parameters inherited from interfaces/parent classes are also excluded.
  */
-final class ParameterNamingSniff extends AbstractVariableNamingSniff {
+final class ParameterSnakeCaseSniff extends AbstractSnakeCaseSniff {
 
   /**
    * Error code for non-snake_case parameters.
    */
   public const CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
-
-  /**
-   * Error code for non-camelCase parameters.
-   */
-  public const CODE_PARAMETER_NOT_CAMEL_CASE = 'NotCamelCase';
 
   /**
    * {@inheritdoc}
@@ -39,7 +33,7 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
     }
 
     // Only process parameters (declaration only, not usage in body).
-    // Local variables handled by LocalVariableNamingSniff.
+    // Local variables handled by LocalVariableSnakeCaseSniff.
     if (!$this->isParameter($phpcsFile, $stackPtr, FALSE)) {
       return;
     }
@@ -50,21 +44,16 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
       return;
     }
 
-    // Check if the variable name follows the configured format.
-    if (!$this->isValidFormat($var_name)) {
-      $suggestion = $this->toFormat($var_name);
-      $error = 'Variable "$%s" is not in %s format; try "$%s"';
-      $data = [$var_name, $this->format, $suggestion];
-
-      // Determine the error code based on the configured format.
-      $error_code = ($this->format === 'snakeCase') ?
-        self::CODE_PARAMETER_NOT_SNAKE_CASE :
-        self::CODE_PARAMETER_NOT_CAMEL_CASE;
+    // Check if the variable name is in snake_case format.
+    if (!$this->isSnakeCase($var_name)) {
+      $suggestion = $this->toSnakeCase($var_name);
+      $error = 'Variable "$%s" is not in snake_case format; try "$%s"';
+      $data = [$var_name, $suggestion];
 
       $fix = $phpcsFile->addFixableError(
         $error,
         $stackPtr,
-        $error_code,
+        self::CODE_PARAMETER_NOT_SNAKE_CASE,
         $data
       );
 

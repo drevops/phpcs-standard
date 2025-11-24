@@ -2,17 +2,11 @@
 <ruleset name="DrevOps">
     <description>DrevOps PHP_CodeSniffer standard.</description>
 
-    <!-- Enforce consistent naming for local variables (default: snakeCase) -->
-    <rule ref="DrevOps.NamingConventions.LocalVariableNaming">
-        <!-- Default is snakeCase, but can be configured to camelCase -->
-        <!-- <property name="format" value="camelCase"/> -->
-    </rule>
+    <!-- Enforce snake_case for local variables -->
+    <rule ref="DrevOps.NamingConventions.LocalVariableSnakeCase"/>
 
-    <!-- Enforce consistent naming for function/method parameters (default: snakeCase) -->
-    <rule ref="DrevOps.NamingConventions.ParameterNaming">
-        <!-- Default is snakeCase, but can be configured to camelCase -->
-        <!-- <property name="format" value="camelCase"/> -->
-    </rule>
+    <!-- Enforce snake_case for function/method parameters -->
+    <rule ref="DrevOps.NamingConventions.ParameterSnakeCase"/>
 
     <!-- Enforce data provider naming conventions -->
     <rule ref="DrevOps.TestingPractices.DataProviderPrefix">

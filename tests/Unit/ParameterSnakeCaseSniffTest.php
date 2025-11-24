@@ -4,20 +4,19 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
-use PHP_CodeSniffer\Config;
 use PHP_CodeSniffer\Ruleset;
-use DrevOps\Sniffs\NamingConventions\ParameterNamingSniff;
+use DrevOps\Sniffs\NamingConventions\ParameterSnakeCaseSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Tests for ParameterNamingSniff.
+ * Tests for ParameterSnakeCaseSniff.
  *
  * Tests sniff-specific logic. Shared base class methods are tested
- * in AbstractVariableNamingSniffTest.
+ * in AbstractVariableSnakeCaseSniffTest.
  */
-#[CoversClass(ParameterNamingSniff::class)]
-class ParameterNamingSniffTest extends UnitTestCase {
+#[CoversClass(ParameterSnakeCaseSniff::class)]
+class ParameterSnakeCaseSniffTest extends UnitTestCase {
 
   /**
    * {@inheritdoc}
@@ -25,8 +24,8 @@ class ParameterNamingSniffTest extends UnitTestCase {
   #[\Override]
   protected function setUp(): void {
     parent::setUp();
-    // Configure to run only ParameterNaming sniff.
-    $this->config->sniffs = ['DrevOps.NamingConventions.ParameterNaming'];
+    // Configure to run only ParameterSnakeCase sniff.
+    $this->config->sniffs = ['DrevOps.NamingConventions.ParameterSnakeCase'];
     $this->ruleset = new Ruleset($this->config);
   }
 
@@ -34,18 +33,17 @@ class ParameterNamingSniffTest extends UnitTestCase {
    * Test that the sniff registers the correct token types.
    */
   public function testRegister(): void {
-    $sniff = new ParameterNamingSniff();
+    $sniff = new ParameterSnakeCaseSniff();
     $tokens = $sniff->register();
 
     $this->assertContains(T_VARIABLE, $tokens);
   }
 
   /**
-   * Test error code constants.
+   * Test error code constant.
    */
   public function testErrorCodeConstant(): void {
-    $this->assertSame('NotSnakeCase', ParameterNamingSniff::CODE_PARAMETER_NOT_SNAKE_CASE);
-    $this->assertSame('NotCamelCase', ParameterNamingSniff::CODE_PARAMETER_NOT_CAMEL_CASE);
+    $this->assertSame('NotSnakeCase', ParameterSnakeCaseSniff::CODE_PARAMETER_NOT_SNAKE_CASE);
   }
 
   /**
@@ -117,84 +115,6 @@ class ParameterNamingSniffTest extends UnitTestCase {
   }
 
   /**
-   * Test process method with camelCase format.
-   *
-   * @param string $code
-   *   PHP code to test.
-   * @param bool $should_have_errors
-   *   Whether errors should be detected.
-   */
-  #[DataProvider('dataProviderProcessWithCamelCaseFormat')]
-  public function testProcessWithCamelCaseFormat(string $code, bool $should_have_errors): void {
-    // Create a new config with camelCase format property.
-    $config = new Config();
-    $config->standards = ['DrevOps'];
-    $config->sniffs = ['DrevOps.NamingConventions.ParameterNaming'];
-
-    // Create temporary ruleset XML with property configuration.
-    $ruleset_xml = '<?xml version="1.0"?>
-<ruleset name="Test">
-    <rule ref="DrevOps.NamingConventions.ParameterNaming">
-        <properties>
-            <property name="format" value="camelCase"/>
-        </properties>
-    </rule>
-</ruleset>';
-
-    $ruleset_file = tempnam(sys_get_temp_dir(), 'phpcs_ruleset_');
-    file_put_contents($ruleset_file, $ruleset_xml);
-
-    try {
-      $config->standards = [$ruleset_file];
-      $this->ruleset = new Ruleset($config);
-
-      $file = $this->processCode($code);
-      $errors = $file->getErrors();
-
-      if ($should_have_errors) {
-        $this->assertNotEmpty($errors);
-      }
-      else {
-        $this->assertEmpty($errors);
-      }
-    }
-    finally {
-      unlink($ruleset_file);
-    }
-  }
-
-  /**
-   * Data provider for camelCase format tests.
-   *
-   * @return array<string, array<mixed>>
-   *   Test cases.
-   */
-  public static function dataProviderProcessWithCamelCaseFormat(): array {
-    return [
-      'valid_camel_case_parameter' => [
-        '<?php function test($validParameter) {}',
-        FALSE,
-      ],
-      'invalid_snake_case_parameter' => [
-        '<?php function test($invalid_parameter) {}',
-        TRUE,
-      ],
-      'single_word_valid' => [
-        '<?php function test($param) {}',
-        FALSE,
-      ],
-      'method_parameter_valid' => [
-        '<?php class Test { public function test($validParam) {} }',
-        FALSE,
-      ],
-      'method_parameter_invalid' => [
-        '<?php class Test { public function test($invalid_param) {} }',
-        TRUE,
-      ],
-    ];
-  }
-
-  /**
    * Test findFunctionDocblock method finds docblock for a function.
    *
    * @param string $code
@@ -205,7 +125,7 @@ class ParameterNamingSniffTest extends UnitTestCase {
   #[DataProvider('providerFindFunctionDocblock')]
   public function testFindFunctionDocblock(string $code, bool $should_find_docblock): void {
     $file = $this->processCode($code);
-    $sniff = new ParameterNamingSniff();
+    $sniff = new ParameterSnakeCaseSniff();
 
     // Use reflection to access the private method.
     $reflection = new \ReflectionClass($sniff);

@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
-use DrevOps\Sniffs\NamingConventions\AbstractVariableNamingSniff;
-use DrevOps\Sniffs\NamingConventions\LocalVariableNamingSniff;
-use DrevOps\Sniffs\NamingConventions\ParameterNamingSniff;
+use DrevOps\Sniffs\NamingConventions\AbstractSnakeCaseSniff;
+use DrevOps\Sniffs\NamingConventions\LocalVariableSnakeCaseSniff;
+use DrevOps\Sniffs\NamingConventions\ParameterSnakeCaseSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Tests for AbstractVariableNamingSniff.
+ * Tests for AbstractSnakeCaseSniff.
  *
  * Tests all shared methods in the abstract base class using
- * LocalVariableNamingSniff as the concrete implementation.
+ * LocalVariableSnakeCaseSniff as the concrete implementation.
  */
-#[CoversClass(AbstractVariableNamingSniff::class)]
-class AbstractVariableNamingSniffTest extends UnitTestCase {
+#[CoversClass(AbstractSnakeCaseSniff::class)]
+class AbstractVariableSnakeCaseSniffTest extends UnitTestCase {
 
   /**
    * Test snake_case detection.
@@ -29,7 +29,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    */
   #[DataProvider('dataProviderSnakeCaseDetection')]
   public function testSnakeCaseDetection(string $name, bool $expected): void {
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isSnakeCase');
 
@@ -71,7 +71,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    */
   #[DataProvider('providerToSnakeCase')]
   public function testToSnakeCase(string $input, string $expected): void {
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('toSnakeCase');
 
@@ -107,7 +107,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    */
   #[DataProvider('providerReservedVariables')]
   public function testReservedVariables(string $name, bool $expected): void {
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isReserved');
 
@@ -144,7 +144,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    * Test register method.
    */
   public function testRegister(): void {
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $tokens = $sniff->register();
 
     $this->assertContains(T_VARIABLE, $tokens);
@@ -162,7 +162,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   public function testGetParameterNames(string $code, array $expected_params): void {
     $file = $this->processCode($code);
     $function_ptr = $this->findFunctionToken($file);
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('getParameterNames');
     $result = $method->invoke($sniff, $file, $function_ptr);
@@ -211,7 +211,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   public function testIsProperty(string $code, string $variable_name, bool $expected): void {
     $file = $this->processCode($code);
     $variable_ptr = $this->findVariableToken($file, $variable_name);
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isProperty');
     $result = $method->invoke($sniff, $file, $variable_ptr);
@@ -278,7 +278,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   public function testIsPromotedProperty(string $code, string $variable_name, bool $expected): void {
     $file = $this->processCode($code);
     $variable_ptr = $this->findVariableToken($file, $variable_name);
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isPromotedProperty');
     $result = $method->invoke($sniff, $file, $variable_ptr);
@@ -345,7 +345,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   public function testIsInheritedParameter(string $code, string $variable_name, bool $expected): void {
     $file = $this->processCode($code);
     $variable_ptr = $this->findVariableToken($file, $variable_name);
-    $sniff = new ParameterNamingSniff();
+    $sniff = new ParameterSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isInheritedParameter');
     $result = $method->invoke($sniff, $file, $variable_ptr);
@@ -422,7 +422,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   public function testIsStaticPropertyAccess(string $code, string $variable_name, bool $expected): void {
     $file = $this->processCode($code);
     $variable_ptr = $this->findVariableToken($file, $variable_name);
-    $sniff = new LocalVariableNamingSniff();
+    $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isStaticPropertyAccess');
     $result = $method->invoke($sniff, $file, $variable_ptr);
@@ -473,184 +473,6 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         FALSE,
       ],
     ];
-  }
-
-  /**
-   * Test camelCase detection.
-   *
-   * @param string $name
-   *   The variable name to test.
-   * @param bool $expected
-   *   Expected result.
-   */
-  #[DataProvider('dataProviderCamelCaseDetection')]
-  public function testCamelCaseDetection(string $name, bool $expected): void {
-    $sniff = new LocalVariableNamingSniff();
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('isCamelCase');
-
-    $result = $method->invoke($sniff, $name);
-    $this->assertSame($expected, $result, 'Failed for: ' . $name);
-  }
-
-  /**
-   * Data provider for camelCase detection tests.
-   *
-   * @return array<string, array<string|bool>>
-   *   Test cases.
-   */
-  public static function dataProviderCamelCaseDetection(): array {
-    return [
-      'valid_single_word' => ['test', TRUE],
-      'valid_camelCase' => ['testVariable', TRUE],
-      'valid_with_number' => ['test123', TRUE],
-      'valid_camelCase_with_number' => ['testVariable123', TRUE],
-      'valid_long_camelCase' => ['testLongVariableName', TRUE],
-      'invalid_snake_case' => ['test_variable', FALSE],
-      'invalid_PascalCase' => ['TestVariable', FALSE],
-      'invalid_uppercase' => ['TEST', FALSE],
-      'invalid_starting_uppercase' => ['Test', FALSE],
-      'invalid_with_underscore' => ['test_var', FALSE],
-      'invalid_leading_underscore' => ['_test', FALSE],
-    ];
-  }
-
-  /**
-   * Test camelCase conversion.
-   *
-   * @param string $input
-   *   The input name.
-   * @param string $expected
-   *   Expected output.
-   */
-  #[DataProvider('providerToCamelCase')]
-  public function testToCamelCase(string $input, string $expected): void {
-    $sniff = new LocalVariableNamingSniff();
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('toCamelCase');
-
-    $result = $method->invoke($sniff, $input);
-    $this->assertSame($expected, $result);
-  }
-
-  /**
-   * Data provider for toCamelCase conversion tests.
-   *
-   * @return array<string, array<string>>
-   *   Test cases.
-   */
-  public static function providerToCamelCase(): array {
-    return [
-      'snake_case' => ['test_variable', 'testVariable'],
-      'PascalCase' => ['TestVariable', 'testvariable'],
-      'already_camel' => ['testVariable', 'testvariable'],
-      'with_numbers' => ['test_123_variable', 'test123Variable'],
-      'multiple_underscores' => ['test__variable', 'testVariable'],
-      'leading_underscore' => ['_test_variable', 'testVariable'],
-      'single_word' => ['test', 'test'],
-    ];
-  }
-
-  /**
-   * Test isValidFormat() method.
-   *
-   * @param string $format
-   *   The format to configure.
-   * @param string $name
-   *   The variable name to test.
-   * @param bool $expected
-   *   Expected result.
-   */
-  #[DataProvider('providerIsValidFormat')]
-  public function testIsValidFormat(string $format, string $name, bool $expected): void {
-    $sniff = new LocalVariableNamingSniff();
-    $sniff->format = $format;
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('isValidFormat');
-
-    $result = $method->invoke($sniff, $name);
-    $this->assertSame($expected, $result);
-  }
-
-  /**
-   * Data provider for isValidFormat tests.
-   *
-   * @return array<string, array<string|bool>>
-   *   Test cases.
-   */
-  public static function providerIsValidFormat(): array {
-    return [
-      'snakeCase_valid_snake' => ['snakeCase', 'test_variable', TRUE],
-      'snakeCase_invalid_camel' => ['snakeCase', 'testVariable', FALSE],
-      'camelCase_valid_camel' => ['camelCase', 'testVariable', TRUE],
-      'camelCase_invalid_snake' => ['camelCase', 'test_variable', FALSE],
-      'snakeCase_single_word' => ['snakeCase', 'test', TRUE],
-      'camelCase_single_word' => ['camelCase', 'test', TRUE],
-    ];
-  }
-
-  /**
-   * Test toFormat() method.
-   *
-   * @param string $format
-   *   The format to configure.
-   * @param string $input
-   *   The input name.
-   * @param string $expected
-   *   Expected output.
-   */
-  #[DataProvider('providerToFormat')]
-  public function testToFormat(string $format, string $input, string $expected): void {
-    $sniff = new LocalVariableNamingSniff();
-    $sniff->format = $format;
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('toFormat');
-
-    $result = $method->invoke($sniff, $input);
-    $this->assertSame($expected, $result);
-  }
-
-  /**
-   * Data provider for toFormat tests.
-   *
-   * @return array<string, array<string>>
-   *   Test cases.
-   */
-  public static function providerToFormat(): array {
-    return [
-      'snakeCase_from_camel' => ['snakeCase', 'testVariable', 'test_variable'],
-      'snakeCase_from_snake' => ['snakeCase', 'test_variable', 'test_variable'],
-      'camelCase_from_snake' => ['camelCase', 'test_variable', 'testVariable'],
-      'camelCase_from_camel' => ['camelCase', 'testVariable', 'testvariable'],
-    ];
-  }
-
-  /**
-   * Test that isValidFormat() throws exception for invalid format.
-   */
-  public function testIsValidFormatThrowsExceptionForInvalidFormat(): void {
-    $sniff = new LocalVariableNamingSniff();
-    $sniff->format = 'invalidFormat';
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('isValidFormat');
-
-    $this->expectException(\RuntimeException::class);
-    $this->expectExceptionMessage('Invalid format: invalidFormat');
-    $method->invoke($sniff, 'test');
-  }
-
-  /**
-   * Test that toFormat() throws exception for invalid format.
-   */
-  public function testToFormatThrowsExceptionForInvalidFormat(): void {
-    $sniff = new LocalVariableNamingSniff();
-    $sniff->format = 'invalidFormat';
-    $reflection = new \ReflectionClass($sniff);
-    $method = $reflection->getMethod('toFormat');
-
-    $this->expectException(\RuntimeException::class);
-    $this->expectExceptionMessage('Invalid format: invalidFormat');
-    $method->invoke($sniff, 'test');
   }
 
 }
