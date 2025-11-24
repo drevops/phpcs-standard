@@ -8,12 +8,21 @@ use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 
 /**
- * Abstract base class for snake_case variable naming sniffs.
+ * Abstract base class for variable naming convention sniffs.
  *
  * Provides shared functionality for validating and converting variable names
- * to snake_case format.
+ * to either snake_case or camelCase format based on configuration.
  */
-abstract class AbstractSnakeCaseSniff implements Sniff {
+abstract class AbstractVariableNamingSniff implements Sniff {
+
+  /**
+   * The naming convention to enforce.
+   *
+   * Valid values: 'snakeCase', 'camelCase'
+   *
+   * @var string
+   */
+  public $format = 'snakeCase';
 
   /**
    * Reserved PHP variable names that should not be validated.
@@ -69,6 +78,36 @@ abstract class AbstractSnakeCaseSniff implements Sniff {
   }
 
   /**
+   * Check if a variable name follows camelCase format.
+   *
+   * @param string $name
+   *   Variable name (without $).
+   *
+   * @return bool
+   *   TRUE if valid camelCase, FALSE otherwise.
+   */
+  protected function isCamelCase(string $name): bool {
+    return (bool) preg_match('/^[a-z][a-zA-Z0-9]*$/', $name);
+  }
+
+  /**
+   * Check if a variable name is valid for the configured format.
+   *
+   * @param string $name
+   *   Variable name (without $).
+   *
+   * @return bool
+   *   TRUE if valid for configured format, FALSE otherwise.
+   */
+  protected function isValidFormat(string $name): bool {
+    return match ($this->format) {
+      'snakeCase' => $this->isSnakeCase($name),
+      'camelCase' => $this->isCamelCase($name),
+      default => throw new \RuntimeException('Invalid format: ' . $this->format),
+    };
+  }
+
+  /**
    * Convert a variable name to snake_case.
    *
    * @param string $name
@@ -94,6 +133,44 @@ abstract class AbstractSnakeCaseSniff implements Sniff {
     $name = (string) preg_replace('/_+/', '_', $name);
 
     return $name;
+  }
+
+  /**
+   * Convert a variable name to camelCase.
+   *
+   * @param string $name
+   *   Variable name (without $).
+   *
+   * @return string
+   *   Converted name in camelCase.
+   */
+  protected function toCamelCase(string $name): string {
+    // Remove leading underscores.
+    $name = ltrim($name, '_');
+
+    // Split on underscores and capitalize each part except the first.
+    $parts = explode('_', $name);
+    $first = strtolower(array_shift($parts));
+    $rest = array_map('ucfirst', array_map('strtolower', $parts));
+
+    return $first . implode('', $rest);
+  }
+
+  /**
+   * Convert a variable name to the configured format.
+   *
+   * @param string $name
+   *   Variable name (without $).
+   *
+   * @return string
+   *   Converted name in the configured format.
+   */
+  protected function toFormat(string $name): string {
+    return match ($this->format) {
+      'snakeCase' => $this->toSnakeCase($name),
+      'camelCase' => $this->toCamelCase($name),
+      default => throw new \RuntimeException('Invalid format: ' . $this->format),
+    };
   }
 
   /**

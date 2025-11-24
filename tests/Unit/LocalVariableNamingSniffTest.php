@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
+use PHP_CodeSniffer\Config;
 use PHP_CodeSniffer\Ruleset;
-use DrevOps\Sniffs\NamingConventions\LocalVariableSnakeCaseSniff;
+use DrevOps\Sniffs\NamingConventions\LocalVariableNamingSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Tests for LocalVariableSnakeCaseSniff.
+ * Tests for LocalVariableNamingSniff.
  *
  * Tests only sniff-specific logic. Abstract base class methods are tested
- * in AbstractVariableSnakeCaseSniffTest.
+ * in AbstractVariableNamingSniffTest.
  */
-#[CoversClass(LocalVariableSnakeCaseSniff::class)]
-class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
+#[CoversClass(LocalVariableNamingSniff::class)]
+class LocalVariableNamingSniffTest extends UnitTestCase {
 
   /**
    * {@inheritdoc}
@@ -24,16 +25,17 @@ class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
   #[\Override]
   protected function setUp(): void {
     parent::setUp();
-    // Configure to run only LocalVariableSnakeCase sniff.
-    $this->config->sniffs = ['DrevOps.NamingConventions.LocalVariableSnakeCase'];
+    // Configure to run only LocalVariableNaming sniff.
+    $this->config->sniffs = ['DrevOps.NamingConventions.LocalVariableNaming'];
     $this->ruleset = new Ruleset($this->config);
   }
 
   /**
-   * Test error code constant.
+   * Test error code constants.
    */
   public function testErrorCodeConstant(): void {
-    $this->assertSame('NotSnakeCase', LocalVariableSnakeCaseSniff::CODE_VARIABLE_NOT_SNAKE_CASE);
+    $this->assertSame('NotSnakeCase', LocalVariableNamingSniff::CODE_VARIABLE_NOT_SNAKE_CASE);
+    $this->assertSame('NotCamelCase', LocalVariableNamingSniff::CODE_VARIABLE_NOT_CAMEL_CASE);
   }
 
   /**
@@ -116,6 +118,84 @@ class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
       'instance_property_read' => [
         '<?php class Test { public function test() { $value = $this->camelCaseProperty; } }',
         FALSE,
+      ],
+    ];
+  }
+
+  /**
+   * Test process method with camelCase format.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param bool $should_have_errors
+   *   Whether errors should be detected.
+   */
+  #[DataProvider('dataProviderProcessWithCamelCaseFormat')]
+  public function testProcessWithCamelCaseFormat(string $code, bool $should_have_errors): void {
+    // Create a new config with camelCase format property.
+    $config = new Config();
+    $config->standards = ['DrevOps'];
+    $config->sniffs = ['DrevOps.NamingConventions.LocalVariableNaming'];
+
+    // Create temporary ruleset XML with property configuration.
+    $ruleset_xml = '<?xml version="1.0"?>
+<ruleset name="Test">
+    <rule ref="DrevOps.NamingConventions.LocalVariableNaming">
+        <properties>
+            <property name="format" value="camelCase"/>
+        </properties>
+    </rule>
+</ruleset>';
+
+    $ruleset_file = tempnam(sys_get_temp_dir(), 'phpcs_ruleset_');
+    file_put_contents($ruleset_file, $ruleset_xml);
+
+    try {
+      $config->standards = [$ruleset_file];
+      $this->ruleset = new Ruleset($config);
+
+      $file = $this->processCode($code);
+      $errors = $file->getErrors();
+
+      if ($should_have_errors) {
+        $this->assertNotEmpty($errors);
+      }
+      else {
+        $this->assertEmpty($errors);
+      }
+    }
+    finally {
+      unlink($ruleset_file);
+    }
+  }
+
+  /**
+   * Data provider for camelCase format tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderProcessWithCamelCaseFormat(): array {
+    return [
+      'valid_camel_case_variable' => [
+        '<?php $validVariable = 1;',
+        FALSE,
+      ],
+      'invalid_snake_case_variable' => [
+        '<?php $invalid_variable = 1;',
+        TRUE,
+      ],
+      'single_word_valid' => [
+        '<?php $test = 1;',
+        FALSE,
+      ],
+      'local_variable_in_method_valid' => [
+        '<?php class Test { public function test() { $validVar = 1; } }',
+        FALSE,
+      ],
+      'local_variable_in_method_invalid' => [
+        '<?php class Test { public function test() { $invalid_var = 1; } }',
+        TRUE,
       ],
     ];
   }

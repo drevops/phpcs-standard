@@ -8,18 +8,18 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
- * Functional integration test for ParameterSnakeCaseSniff.
+ * Functional integration test for ParameterNamingSniff.
  *
  * This tests the sniff by actually running phpcs as an external command,
  * which is the most reliable way to test PHPCS sniffs.
  */
 #[CoversNothing]
-class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
+class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
 
   /**
    * {@inheritdoc}
    */
-  protected string $sniffSource = 'DrevOps.NamingConventions.ParameterSnakeCase';
+  protected string $sniffSource = 'DrevOps.NamingConventions.ParameterNaming';
 
   #[Group('smoke')]
   public function testSmoke(): void {
@@ -31,18 +31,18 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
       static::$fixtures . DIRECTORY_SEPARATOR . 'VariableNaming.php',
       [
         [
-          'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
-          'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
+          'message' => 'Variable "$invalidParam" is not in snakeCase format; try "$invalid_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],
         [
-          'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
-          'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
+          'message' => 'Variable "$invalidParam" is not in snakeCase format; try "$invalid_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],
         [
-          'message' => 'Variable "$invalidParam" is not in snake_case format; try "$invalid_param"',
-          'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
+          'message' => 'Variable "$invalidParam" is not in snakeCase format; try "$invalid_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],
       ]
@@ -57,13 +57,13 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
       static::$fixtures . DIRECTORY_SEPARATOR . 'InheritedParameters.php',
       [
         [
-          'message' => 'Variable "$invalidNonInheritedParamOne" is not in snake_case format; try "$invalid_non_inherited_param_one"',
-          'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
+          'message' => 'Variable "$invalidNonInheritedParamOne" is not in snakeCase format; try "$invalid_non_inherited_param_one"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],
         [
-          'message' => 'Variable "$invalidNonInheritedParamTwo" is not in snake_case format; try "$invalid_non_inherited_param_two"',
-          'source' => 'DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase',
+          'message' => 'Variable "$invalidNonInheritedParamTwo" is not in snakeCase format; try "$invalid_non_inherited_param_two"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],
       ]
@@ -97,7 +97,7 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
 
     $this->processRun(
       $phpcbf_bin,
-      ['--standard=DrevOps', '--sniffs=DrevOps.NamingConventions.ParameterSnakeCase', '-q', $temp_file],
+      ['--standard=DrevOps', '--sniffs=DrevOps.NamingConventions.ParameterNaming', '-q', $temp_file],
       timeout: 120
     );
 
@@ -115,7 +115,7 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
 
     // Verify old parameter names are gone from signatures and docblocks.
     // Note: Parameter usages in method bodies are NOT fixed by this sniff -
-    // that's the job of LocalVariableSnakeCaseSniff.
+    // that's the job of LocalVariableNamingSniff.
     $this->assertStringNotContainsString('function methodWithDocblock(string $invalidParam', $fixed_content, 'Old parameter name should not exist in signature');
     $this->assertStringNotContainsString('@param string $invalidParam', $fixed_content, 'Old parameter name should not exist in docblock');
     $this->assertStringNotContainsString('@param int $anotherInvalid', $fixed_content, 'Old parameter name should not exist in docblock');
