@@ -7,17 +7,23 @@ namespace DrevOps\Sniffs\NamingConventions;
 use PHP_CodeSniffer\Files\File;
 
 /**
- * Enforces snake_case naming for local variables.
+ * Enforces consistent naming convention for local variables.
  *
- * This sniff checks that local variables use snake_case format.
- * Function/method parameters and class properties are excluded.
+ * This sniff checks that local variables use the configured naming format
+ * (snakeCase or camelCase). Function/method parameters and class properties
+ * are excluded.
  */
-final class LocalVariableSnakeCaseSniff extends AbstractSnakeCaseSniff {
+final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
 
   /**
    * Error code for non-snake_case variables.
    */
   public const CODE_VARIABLE_NOT_SNAKE_CASE = 'NotSnakeCase';
+
+  /**
+   * Error code for non-camelCase variables.
+   */
+  public const CODE_VARIABLE_NOT_CAMEL_CASE = 'NotCamelCase';
 
   /**
    * {@inheritdoc}
@@ -42,21 +48,26 @@ final class LocalVariableSnakeCaseSniff extends AbstractSnakeCaseSniff {
     }
 
     // Skip parameters (both declaration and usage).
-    // Handled by ParameterSnakeCaseSniff.
+    // Handled by ParameterNamingSniff.
     if ($this->isParameter($phpcsFile, $stackPtr, TRUE)) {
       return;
     }
 
-    // Check if the variable name is in snake_case format.
-    if (!$this->isSnakeCase($var_name)) {
-      $suggestion = $this->toSnakeCase($var_name);
-      $error = 'Variable "$%s" is not in snake_case format; try "$%s"';
-      $data = [$var_name, $suggestion];
+    // Check if the variable name follows the configured format.
+    if (!$this->isValidFormat($var_name)) {
+      $suggestion = $this->toFormat($var_name);
+      $error = 'Variable "$%s" is not in %s format; try "$%s"';
+      $data = [$var_name, $this->format, $suggestion];
+
+      // Determine the error code based on the configured format.
+      $error_code = ($this->format === 'snakeCase') ?
+        self::CODE_VARIABLE_NOT_SNAKE_CASE :
+        self::CODE_VARIABLE_NOT_CAMEL_CASE;
 
       $fix = $phpcsFile->addFixableError(
         $error,
         $stackPtr,
-        self::CODE_VARIABLE_NOT_SNAKE_CASE,
+        $error_code,
         $data
       );
 

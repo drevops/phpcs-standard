@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a PHP_CodeSniffer (PHPCS) standard package (`drevops/phpcs-standard`) that enforces custom coding conventions, specifically focused on snake_case naming for local variables and parameters.
+This is a PHP_CodeSniffer (PHPCS) standard package (`drevops/phpcs-standard`) that enforces custom coding conventions, specifically focused on configurable naming (snakeCase or camelCase) for local variables and parameters.
 
 **Key Goals:**
-- Enforce snake_case for local variables and function/method parameters
-- Exclude class properties from snake_case enforcement (properties follow different conventions)
+- Enforce consistent naming conventions for local variables and function/method parameters
+- Support configurable formats: snakeCase (default) or camelCase
+- Exclude class properties from naming enforcement (properties follow different conventions)
 - Preserve inherited parameter names from interfaces and parent classes
 - Provide auto-fixing support via `phpcbf`
 - Provide a standalone, reusable PHPCS standard for the DrevOps ecosystem
@@ -49,8 +50,8 @@ Coverage reports are generated in:
 Run a single test file:
 ```bash
 ./vendor/bin/phpunit tests/Unit/AbstractVariableSnakeCaseSniffTest.php
-./vendor/bin/phpunit tests/Unit/LocalVariableSnakeCaseSniffTest.php
-./vendor/bin/phpunit tests/Unit/ParameterSnakeCaseSniffTest.php
+./vendor/bin/phpunit tests/Unit/LocalVariableNamingSniffTest.php
+./vendor/bin/phpunit tests/Unit/ParameterNamingSniffTest.php
 ```
 
 Run only unit tests or functional tests:
@@ -86,15 +87,15 @@ composer normalize --dry-run
 ### Directory Structure
 - `src/DrevOps/` - Source code for the PHPCS standard
   - `Sniffs/NamingConventions/`
-    - `AbstractSnakeCaseSniff.php` - Base class with shared functionality
-    - `LocalVariableSnakeCaseSniff.php` - Enforces snake_case for local variables
-    - `ParameterSnakeCaseSniff.php` - Enforces snake_case for parameters
+    - `AbstractVariableNamingSniff.php` - Base class with shared functionality
+    - `LocalVariableNamingSniff.php` - Enforces snake_case for local variables
+    - `ParameterNamingSniff.php` - Enforces snake_case for parameters
   - `ruleset.xml` - DrevOps standard definition
 - `tests/` - PHPUnit tests organized by type:
   - `Unit/` - Unit tests for individual sniff methods (using reflection)
     - `AbstractVariableSnakeCaseSniffTest.php` - Tests shared base class methods
-    - `LocalVariableSnakeCaseSniffTest.php` - Tests local variable sniff
-    - `ParameterSnakeCaseSniffTest.php` - Tests parameter sniff
+    - `LocalVariableNamingSniffTest.php` - Tests local variable sniff
+    - `ParameterNamingSniffTest.php` - Tests parameter sniff
     - `UnitTestCase.php` - Base test class with helper methods
   - `Functional/` - Integration tests that run actual phpcs commands
   - `Fixtures/` - Test fixture files with intentional violations
@@ -105,15 +106,22 @@ composer normalize --dry-run
 
 The standard uses an **abstract base class pattern** with two concrete implementations:
 
-#### AbstractSnakeCaseSniff
+#### AbstractVariableNamingSniff
 
-Base class (src/DrevOps/Sniffs/NamingConventions/AbstractSnakeCaseSniff.php) containing shared functionality:
+Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php) containing shared functionality:
+
+**Public property:**
+- `$format` - Configurable naming convention ('snakeCase' or 'camelCase', default: 'snakeCase')
 
 **Core methods:**
 - `register()` - Registers T_VARIABLE token for processing
 - `isReserved()` - Identifies PHP reserved variables ($this, $_GET, etc.)
 - `isSnakeCase()` - Validates snake_case format using regex
-- `toSnakeCase()` - Converts camelCase to snake_case for suggestions
+- `isCamelCase()` - Validates camelCase format using regex
+- `isValidFormat()` - Validates variable name against configured format
+- `toSnakeCase()` - Converts variable name to snake_case
+- `toCamelCase()` - Converts variable name to camelCase
+- `toFormat()` - Converts variable name to the configured format
 
 **Helper methods:**
 - `getParameterNames()` - Extracts parameter names from function signature
@@ -124,29 +132,33 @@ Base class (src/DrevOps/Sniffs/NamingConventions/AbstractSnakeCaseSniff.php) con
 - `isProperty()` - Distinguishes class properties from local variables
 - `isInheritedParameter()` - Detects parameters from interfaces/parent classes
 
-#### LocalVariableSnakeCaseSniff
+#### LocalVariableNamingSniff
 
-Enforces snake_case for **local variables** inside functions/methods.
+Enforces configurable naming convention for **local variables** inside functions/methods.
 
 **What gets checked:**
 - ✅ Local variables inside function/method bodies
-- ❌ Function/method parameters (handled by ParameterSnakeCase)
+- ❌ Function/method parameters (handled by ParameterNaming)
 - ❌ Class properties (not enforced)
 - ❌ Reserved PHP variables ($this, superglobals, etc.)
 
-**Error code:** `DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
+**Error codes:**
+- `DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase` (when format='snakeCase')
+- `DrevOps.NamingConventions.LocalVariableNaming.NotCamelCase` (when format='camelCase')
 
-#### ParameterSnakeCaseSniff
+#### ParameterNamingSniff
 
-Enforces snake_case for **function/method parameters**.
+Enforces configurable naming convention for **function/method parameters**.
 
 **What gets checked:**
 - ✅ Function and method parameters (in signature only)
-- ❌ Local variables (handled by LocalVariableSnakeCase)
+- ❌ Local variables (handled by LocalVariableNaming)
 - ❌ Parameters inherited from interfaces/parent classes/abstract methods
 - ❌ Promoted constructor properties
 
-**Error code:** `DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
+**Error codes:**
+- `DrevOps.NamingConventions.ParameterNaming.NotSnakeCase` (when format='snakeCase')
+- `DrevOps.NamingConventions.ParameterNaming.NotCamelCase` (when format='camelCase')
 
 ### PHPCS Standard Registration
 
@@ -169,16 +181,16 @@ Tests are organized by class hierarchy:
 **AbstractVariableSnakeCaseSniffTest.php**
 - Tests all shared base class methods using reflection
 - Tests: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`, `getParameterNames()`, `isProperty()`, `isPromotedProperty()`, `isInheritedParameter()`
-- Each test uses concrete sniff instances (LocalVariableSnakeCaseSniff or ParameterSnakeCaseSniff) to access protected methods
+- Each test uses concrete sniff instances (LocalVariableNamingSniff or ParameterNamingSniff) to access protected methods
 
-**LocalVariableSnakeCaseSniffTest.php**
+**LocalVariableNamingSniffTest.php**
 - Tests sniff-specific logic: error code constant and `process()` method
-- Configured to run only LocalVariableSnakeCase sniff in isolation
+- Configured to run only LocalVariableNaming sniff in isolation
 - Validates that local variables are checked and parameters are skipped
 
-**ParameterSnakeCaseSniffTest.php**
+**ParameterNamingSniffTest.php**
 - Tests sniff-specific logic: error code constant, `register()`, and `process()` method
-- Configured to run only ParameterSnakeCase sniff in isolation
+- Configured to run only ParameterNaming sniff in isolation
 - Validates that parameters are checked and local variables are skipped
 - Includes tests for inherited parameter detection
 
@@ -190,15 +202,15 @@ Tests are organized by class hierarchy:
 
 #### 2. Functional Tests
 
-**LocalVariableSnakeCaseSniffFunctionalTest.php**
+**LocalVariableNamingSniffFunctionalTest.php**
 - Run actual `phpcs` commands as external processes
 - Test complete PHPCS integration with JSON output parsing
-- Verify LocalVariableSnakeCase sniff detection and error codes
+- Verify LocalVariableNaming sniff detection and error codes
 
-**ParameterSnakeCaseSniffFunctionalTest.php**
+**ParameterNamingSniffFunctionalTest.php**
 - Run actual `phpcs` commands as external processes
 - Test complete PHPCS integration with JSON output parsing
-- Verify ParameterSnakeCase sniff detection and error codes
+- Verify ParameterNaming sniff detection and error codes
 
 Tests include:
 - Confirms violations are detected with correct error codes
@@ -239,7 +251,7 @@ When implementing or modifying sniffs:
 
 1. Place sniff classes in `src/DrevOps/Sniffs/` following PHPCS naming conventions
    - Format: `CategoryName/SniffNameSniff.php`
-   - Example: `NamingConventions/LocalVariableSnakeCaseSniff.php`
+   - Example: `NamingConventions/LocalVariableNamingSniff.php`
 2. Consider using abstract base classes for shared functionality across related sniffs
 3. Implement the `Sniff` interface from `PHP_CodeSniffer\Sniffs\Sniff`
 4. Use `declare(strict_types=1);` at the top of all PHP files
@@ -254,8 +266,10 @@ When implementing or modifying sniffs:
 10. Create fixture files in `tests/Fixtures/` with intentional violations
 11. Follow error code naming: `StandardName.Category.SniffName.ErrorName`
     - Examples:
-      - `DrevOps.NamingConventions.LocalVariableSnakeCase.NotSnakeCase`
-      - `DrevOps.NamingConventions.ParameterSnakeCase.NotSnakeCase`
+      - `DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase`
+      - `DrevOps.NamingConventions.LocalVariableNaming.NotCamelCase`
+      - `DrevOps.NamingConventions.ParameterNaming.NotSnakeCase`
+      - `DrevOps.NamingConventions.ParameterNaming.NotCamelCase`
 
 ## CI/CD
 
