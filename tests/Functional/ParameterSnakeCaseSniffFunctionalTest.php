@@ -80,4 +80,52 @@ class ParameterSnakeCaseSniffFunctionalTest extends FunctionalTestCase {
     );
   }
 
+  /**
+   * Test that phpcbf fixes both parameter names and docblock @param tags.
+   */
+  public function testPhpcbfFixesDocblockParams(): void {
+    $fixture_file = static::$fixtures . DIRECTORY_SEPARATOR . 'ParameterDocblockMismatch.php';
+    $this->assertFileExists($fixture_file, 'Fixture file must exist');
+
+    // Create a temporary copy to fix.
+    $temp_file = static::$tmp . DIRECTORY_SEPARATOR . 'test_' . uniqid() . '.php';
+    copy($fixture_file, $temp_file);
+
+    // Run phpcbf to fix the file.
+    $phpcbf_bin = __DIR__ . '/../../vendor/bin/phpcbf';
+    $this->assertFileExists($phpcbf_bin, 'PHPCBF binary must exist');
+
+    $this->processRun(
+      $phpcbf_bin,
+      ['--standard=DrevOps', '--sniffs=DrevOps.NamingConventions.ParameterSnakeCase', '-q', $temp_file],
+      timeout: 120
+    );
+
+    // Read the fixed file.
+    $fixed_content = file_get_contents($temp_file);
+    $this->assertIsString($fixed_content, 'Fixed file should be readable');
+
+    // Verify that parameter names in signatures are fixed.
+    $this->assertStringContainsString('function methodWithDocblock(string $invalid_param', $fixed_content, 'Parameter signature should be fixed');
+    $this->assertStringContainsString('int $another_invalid', $fixed_content, 'Second parameter signature should be fixed');
+
+    // Verify that parameter names in docblocks are also fixed.
+    $this->assertStringContainsString('@param string $invalid_param', $fixed_content, 'Docblock @param should be fixed');
+    $this->assertStringContainsString('@param int $another_invalid', $fixed_content, 'Docblock @param should be fixed for second parameter');
+
+    // Verify old parameter names are gone from signatures and docblocks.
+    // Note: Parameter usages in method bodies are NOT fixed by this sniff -
+    // that's the job of LocalVariableSnakeCaseSniff.
+    $this->assertStringNotContainsString('function methodWithDocblock(string $invalidParam', $fixed_content, 'Old parameter name should not exist in signature');
+    $this->assertStringNotContainsString('@param string $invalidParam', $fixed_content, 'Old parameter name should not exist in docblock');
+    $this->assertStringNotContainsString('@param int $anotherInvalid', $fixed_content, 'Old parameter name should not exist in docblock');
+
+    // Verify complex types are preserved.
+    $this->assertStringContainsString('array<string, mixed> $invalid_param', $fixed_content, 'Complex array type should be preserved');
+    $this->assertStringContainsString('\DateTime|null $optional_invalid', $fixed_content, 'Union type should be preserved');
+
+    // Verify multiline descriptions are preserved.
+    $this->assertStringContainsString('This is a parameter with a very long description', $fixed_content, 'Multiline descriptions should be preserved');
+  }
+
 }

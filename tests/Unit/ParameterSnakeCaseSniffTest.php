@@ -114,4 +114,82 @@ class ParameterSnakeCaseSniffTest extends UnitTestCase {
     ];
   }
 
+  /**
+   * Test findFunctionDocblock method finds docblock for a function.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param bool $should_find_docblock
+   *   Whether a docblock should be found.
+   */
+  #[DataProvider('providerFindFunctionDocblock')]
+  public function testFindFunctionDocblock(string $code, bool $should_find_docblock): void {
+    $file = $this->processCode($code);
+    $sniff = new ParameterSnakeCaseSniff();
+
+    // Use reflection to access the private method.
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('findFunctionDocblock');
+
+    // Find the function token.
+    $function_token = $this->findFunctionToken($file);
+    $this->assertNotFalse($function_token, 'Function token should be found');
+
+    // Call the method.
+    $result = $method->invoke($sniff, $file, $function_token);
+
+    if ($should_find_docblock) {
+      $this->assertNotFalse($result, 'Docblock should be found');
+      $this->assertIsInt($result);
+    }
+    else {
+      $this->assertFalse($result, 'Docblock should not be found');
+    }
+  }
+
+  /**
+   * Data provider for findFunctionDocblock tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function providerFindFunctionDocblock(): array {
+    return [
+      'function_with_docblock' => [
+        '<?php
+        /**
+         * Test function.
+         *
+         * @param string $param
+         *   A parameter.
+         */
+        function testFunction($param) {}',
+        TRUE,
+      ],
+      'function_without_docblock' => [
+        '<?php function testFunction($param) {}',
+        FALSE,
+      ],
+      'function_with_single_line_comment' => [
+        '<?php
+        // This is a comment.
+        function testFunction($param) {}',
+        FALSE,
+      ],
+      'method_with_docblock_and_visibility' => [
+        '<?php
+        class Test {
+          /**
+           * Test method.
+           *
+           * @param string $param
+           *   A parameter.
+           */
+          public function testFunction($param) {}
+        }',
+        TRUE,
+      ],
+    ];
+  }
+
 }
