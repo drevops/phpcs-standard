@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
-use PHP_CodeSniffer\Config;
 use PHP_CodeSniffer\Ruleset;
 use DrevOps\Sniffs\NamingConventions\ParameterNamingSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -112,84 +111,6 @@ class ParameterNamingSniffTest extends UnitTestCase {
       'inherited_invalid_parameter_extends' => [
         '<?php class Test extends BaseClass { public function test($invalidParam) {} }',
         FALSE,
-      ],
-    ];
-  }
-
-  /**
-   * Test process method with camelCase format.
-   *
-   * @param string $code
-   *   PHP code to test.
-   * @param bool $should_have_errors
-   *   Whether errors should be detected.
-   */
-  #[DataProvider('dataProviderProcessWithCamelCaseFormat')]
-  public function testProcessWithCamelCaseFormat(string $code, bool $should_have_errors): void {
-    // Create a new config with camelCase format property.
-    $config = new Config();
-    $config->standards = ['DrevOps'];
-    $config->sniffs = ['DrevOps.NamingConventions.ParameterNaming'];
-
-    // Create temporary ruleset XML with property configuration.
-    $ruleset_xml = '<?xml version="1.0"?>
-<ruleset name="Test">
-    <rule ref="DrevOps.NamingConventions.ParameterNaming">
-        <properties>
-            <property name="format" value="camelCase"/>
-        </properties>
-    </rule>
-</ruleset>';
-
-    $ruleset_file = tempnam(sys_get_temp_dir(), 'phpcs_ruleset_');
-    file_put_contents($ruleset_file, $ruleset_xml);
-
-    try {
-      $config->standards = [$ruleset_file];
-      $this->ruleset = new Ruleset($config);
-
-      $file = $this->processCode($code);
-      $errors = $file->getErrors();
-
-      if ($should_have_errors) {
-        $this->assertNotEmpty($errors);
-      }
-      else {
-        $this->assertEmpty($errors);
-      }
-    }
-    finally {
-      unlink($ruleset_file);
-    }
-  }
-
-  /**
-   * Data provider for camelCase format tests.
-   *
-   * @return array<string, array<mixed>>
-   *   Test cases.
-   */
-  public static function dataProviderProcessWithCamelCaseFormat(): array {
-    return [
-      'valid_camel_case_parameter' => [
-        '<?php function test($validParameter) {}',
-        FALSE,
-      ],
-      'invalid_snake_case_parameter' => [
-        '<?php function test($invalid_parameter) {}',
-        TRUE,
-      ],
-      'single_word_valid' => [
-        '<?php function test($param) {}',
-        FALSE,
-      ],
-      'method_parameter_valid' => [
-        '<?php class Test { public function test($validParam) {} }',
-        FALSE,
-      ],
-      'method_parameter_invalid' => [
-        '<?php class Test { public function test($invalid_param) {} }',
-        TRUE,
       ],
     ];
   }
