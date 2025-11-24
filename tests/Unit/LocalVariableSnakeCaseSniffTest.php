@@ -44,7 +44,7 @@ class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
    * @param bool $should_have_errors
    *   Whether errors should be detected.
    */
-  #[DataProvider('providerProcessCases')]
+  #[DataProvider('dataProviderProcess')]
   public function testProcess(string $code, bool $should_have_errors): void {
     $file = $this->processCode($code);
     $errors = $file->getErrors();
@@ -63,7 +63,7 @@ class LocalVariableSnakeCaseSniffTest extends UnitTestCase {
    * @return array<string, array<mixed>>
    *   Test cases.
    */
-  public static function providerProcessCases(): array {
+  public static function dataProviderProcess(): array {
     return [
       'valid_snake_case_variable' => [
         '<?php $valid_variable = 1;',
