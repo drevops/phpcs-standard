@@ -27,7 +27,7 @@ class AbstractVariableSnakeCaseSniffTest extends UnitTestCase {
    * @param bool $expected
    *   Expected result.
    */
-  #[DataProvider('providerSnakeCase')]
+  #[DataProvider('dataProviderSnakeCaseDetection')]
   public function testSnakeCaseDetection(string $name, bool $expected): void {
     $sniff = new LocalVariableSnakeCaseSniff();
     $reflection = new \ReflectionClass($sniff);
@@ -43,7 +43,7 @@ class AbstractVariableSnakeCaseSniffTest extends UnitTestCase {
    * @return array<string, array<string|bool>>
    *   Test cases.
    */
-  public static function providerSnakeCase(): array {
+  public static function dataProviderSnakeCaseDetection(): array {
     return [
       'valid_single_word' => ['test', TRUE],
       'valid_with_underscore' => ['test_variable', TRUE],
