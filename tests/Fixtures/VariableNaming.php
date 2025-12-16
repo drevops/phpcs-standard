@@ -14,6 +14,12 @@ class ClassWithMixedVariableNaming {
 
   public static $camelCaseStaticProperty;
 
+  protected ?string $nullableProperty = NULL;
+
+  protected ?\DOMDocument $xmlDom = NULL;
+
+  protected ?\DateTime $dateTime = NULL;
+
   public function methodWithMixedLocalVariables(): void {
     $valid_snake_case_local = 'valid';
     $another_valid_local = 123;
@@ -65,6 +71,7 @@ class ClassWithPromotedProperties {
   public function __construct(
     public string $promotedPropertyOne,
     public string $promoted_property_two,
+    public ?\DOMDocument $promotedNullableProperty = NULL,
   ) {
     $localVar = 'invalid';
     $valid_local = 'valid';
