@@ -261,6 +261,26 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         'bar',
         FALSE,
       ],
+      'typed_property' => [
+        '<?php class Test { protected string $typedProperty; }',
+        'typedProperty',
+        TRUE,
+      ],
+      'nullable_property' => [
+        '<?php class Test { protected ?string $nullableProperty = NULL; }',
+        'nullableProperty',
+        TRUE,
+      ],
+      'nullable_fully_qualified_property' => [
+        '<?php class Test { protected ?\DOMDocument $xmlDom = NULL; }',
+        'xmlDom',
+        TRUE,
+      ],
+      'nullable_qualified_property' => [
+        '<?php namespace App; class Test { protected ?Some\Type $property = NULL; }',
+        'property',
+        TRUE,
+      ],
     ];
   }
 
@@ -327,6 +347,16 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         '<?php $variable = 1;',
         'variable',
         FALSE,
+      ],
+      'promoted_nullable_property' => [
+        '<?php class Test { public function __construct(public ?string $property) {} }',
+        'property',
+        TRUE,
+      ],
+      'promoted_nullable_fully_qualified_property' => [
+        '<?php class Test { public function __construct(public ?\DOMDocument $dom) {} }',
+        'dom',
+        TRUE,
       ],
     ];
   }

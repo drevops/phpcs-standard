@@ -311,6 +311,10 @@ abstract class AbstractVariableNamingSniff implements Sniff {
         T_TYPE_INTERSECTION,
         T_ATTRIBUTE,
         T_ATTRIBUTE_END,
+        // PHP 8+ namespaced type tokens.
+        T_NAME_FULLY_QUALIFIED,
+        T_NAME_QUALIFIED,
+        T_NAME_RELATIVE,
       ],
       $stackPtr - 1,
       NULL,
@@ -401,6 +405,10 @@ abstract class AbstractVariableNamingSniff implements Sniff {
         T_TYPE_INTERSECTION,
         T_ATTRIBUTE,
         T_ATTRIBUTE_END,
+        // PHP 8+ namespaced type tokens.
+        T_NAME_FULLY_QUALIFIED,
+        T_NAME_QUALIFIED,
+        T_NAME_RELATIVE,
       ],
       $stack_ptr - 1,
       NULL,
