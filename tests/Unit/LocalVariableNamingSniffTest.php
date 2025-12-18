@@ -118,6 +118,14 @@ class LocalVariableNamingSniffTest extends UnitTestCase {
         '<?php class Test { public function test() { $value = $this->camelCaseProperty; } }',
         FALSE,
       ],
+      'underscore_prefixed_variable' => [
+        '<?php function test() { $_static_value = 1; }',
+        FALSE,
+      ],
+      'underscore_prefixed_variable_camel' => [
+        '<?php function test() { $_internalVar = 1; }',
+        FALSE,
+      ],
     ];
   }
 

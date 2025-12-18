@@ -37,6 +37,11 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
       return;
     }
 
+    // Skip variables with leading underscores (e.g., $_static_value).
+    if ($this->hasLeadingUnderscore($var_name)) {
+      return;
+    }
+
     // Skip static property accesses (self::$prop, static::$prop, etc.).
     if ($this->isStaticPropertyAccess($phpcsFile, $stackPtr)) {
       return;
