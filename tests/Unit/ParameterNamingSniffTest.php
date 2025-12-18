@@ -112,6 +112,14 @@ class ParameterNamingSniffTest extends UnitTestCase {
         '<?php class Test extends BaseClass { public function test($invalidParam) {} }',
         FALSE,
       ],
+      'underscore_prefixed_parameter' => [
+        '<?php function test($_prefixed_param) {}',
+        FALSE,
+      ],
+      'underscore_prefixed_parameter_camel' => [
+        '<?php function test($_prefixedParam) {}',
+        FALSE,
+      ],
     ];
   }
 

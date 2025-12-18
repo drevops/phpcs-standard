@@ -65,6 +65,23 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   }
 
   /**
+   * Check if a variable name has a leading underscore.
+   *
+   * Variables with leading underscores (e.g., $_static_value) are typically
+   * used as a naming convention for internal/special variables and should
+   * be excluded from naming convention checks.
+   *
+   * @param string $name
+   *   Variable name (without $).
+   *
+   * @return bool
+   *   TRUE if has leading underscore, FALSE otherwise.
+   */
+  protected function hasLeadingUnderscore(string $name): bool {
+    return str_starts_with($name, '_');
+  }
+
+  /**
    * Check if a variable name follows snake_case format.
    *
    * @param string $name

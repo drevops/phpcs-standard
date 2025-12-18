@@ -38,6 +38,11 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
       return;
     }
 
+    // Skip variables with leading underscores (e.g., $_static_value).
+    if ($this->hasLeadingUnderscore($var_name)) {
+      return;
+    }
+
     // Only process parameters (declaration only, not usage in body).
     // Local variables handled by LocalVariableNamingSniff.
     if (!$this->isParameter($phpcsFile, $stackPtr, FALSE)) {

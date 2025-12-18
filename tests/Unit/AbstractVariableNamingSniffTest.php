@@ -683,4 +683,42 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
     $method->invoke($sniff, 'test');
   }
 
+  /**
+   * Test leading underscore detection.
+   *
+   * @param string $name
+   *   The variable name to test.
+   * @param bool $expected
+   *   Expected result.
+   */
+  #[DataProvider('providerHasLeadingUnderscore')]
+  public function testHasLeadingUnderscore(string $name, bool $expected): void {
+    $sniff = new LocalVariableNamingSniff();
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('hasLeadingUnderscore');
+
+    $result = $method->invoke($sniff, $name);
+    $this->assertSame($expected, $result, 'Failed for: ' . $name);
+  }
+
+  /**
+   * Data provider for hasLeadingUnderscore tests.
+   *
+   * @return array<string, array<string|bool>>
+   *   Test cases.
+   */
+  public static function providerHasLeadingUnderscore(): array {
+    return [
+      'leading_underscore_snake' => ['_static_value', TRUE],
+      'leading_underscore_camel' => ['_staticValue', TRUE],
+      'leading_underscore_only' => ['_', TRUE],
+      'leading_double_underscore' => ['__internal', TRUE],
+      'no_leading_underscore_snake' => ['static_value', FALSE],
+      'no_leading_underscore_camel' => ['staticValue', FALSE],
+      'underscore_in_middle' => ['static_value', FALSE],
+      'trailing_underscore' => ['value_', FALSE],
+      'single_letter' => ['a', FALSE],
+    ];
+  }
+
 }
