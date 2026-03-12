@@ -130,6 +130,127 @@ class LocalVariableNamingSniffTest extends UnitTestCase {
   }
 
   /**
+   * Test fixCommentTypes property default value.
+   */
+  public function testFixCommentTypesDefault(): void {
+    $sniff = new LocalVariableNamingSniff();
+    $this->assertSame('doc', $sniff->fixCommentTypes);
+  }
+
+  /**
+   * Test findPrecedingComment method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to find (without $).
+   * @param bool $should_find_comment
+   *   Whether preceding comment tokens should be found.
+   */
+  #[DataProvider('dataProviderFindPrecedingComment')]
+  public function testFindPrecedingComment(string $code, string $variable_name, bool $should_find_comment): void {
+    $file = $this->processCode($code);
+    $sniff = new LocalVariableNamingSniff();
+
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('findPrecedingComment');
+
+    $var_token = $this->findVariableToken($file, $variable_name);
+    $result = $method->invoke($sniff, $file, $var_token);
+
+    if ($should_find_comment) {
+      $this->assertNotEmpty($result, 'Preceding comment tokens should be found');
+    }
+    else {
+      $this->assertEmpty($result, 'No preceding comment tokens should be found');
+    }
+  }
+
+  /**
+   * Data provider for findPrecedingComment tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderFindPrecedingComment(): array {
+    return [
+      'single_line_doc_comment_above' => [
+        '<?php
+        /** @var \SomeClass $myVar */
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'multi_line_doc_comment_above' => [
+        '<?php
+        /**
+         * @var \Drupal\Core\Extension\ModuleHandler $myVar
+         */
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'comment_with_blank_line_between' => [
+        '<?php
+        /** @var \SomeClass $myVar */
+
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'no_comment_above' => [
+        '<?php
+        $myVar = get_service();',
+        'myVar',
+        FALSE,
+      ],
+      'code_between_comment_and_variable' => [
+        '<?php
+        /** @var \SomeClass $myVar */
+        $other = 1;
+        $myVar = get_service();',
+        'myVar',
+        FALSE,
+      ],
+      'inline_comment_above' => [
+        '<?php
+        // $myVar holds the handler.
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'fqn_type_in_doc_comment' => [
+        '<?php
+        /** @var \Drupal\Core\Extension\ModuleHandler $myVar */
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'fqn_without_leading_backslash' => [
+        '<?php
+        /** @var Drupal\Core\Extension\ModuleHandler $myVar */
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'long_fqn_type' => [
+        '<?php
+        /** @var \Very\Long\Namespace\Path\To\SomeClass $myVar */
+        $myVar = get_service();',
+        'myVar',
+        TRUE,
+      ],
+      'trailing_comment_on_previous_statement' => [
+        '<?php
+        $other = get_service("other"); // $myVar trailing.
+        $myVar = get_service();',
+        'myVar',
+        FALSE,
+      ],
+    ];
+  }
+
+  /**
    * Test error code selection logic for both formats.
    *
    * This test verifies that the error code ternary operator correctly selects

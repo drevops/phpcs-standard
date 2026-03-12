@@ -128,6 +128,40 @@ abstract class FunctionalTestCase extends TestCase {
   }
 
   /**
+   * Run phpcbf against a copy of a file and return the fixed content.
+   *
+   * @param string $file_path
+   *   The path to the fixture file.
+   * @param string $sniff
+   *   The sniff to run (e.g., 'DrevOps.NamingConventions.LocalVariableNaming').
+   *
+   * @return string
+   *   The fixed file content.
+   */
+  protected function runPhpcbf(string $file_path, string $sniff): string {
+    $phpcbf_bin = __DIR__ . '/../../vendor/bin/phpcbf';
+    $this->assertFileExists($phpcbf_bin, 'PHPCBF binary must exist');
+    $this->assertFileExists($file_path, 'File to fix must exist');
+
+    // Copy fixture to a temp file so we don't modify the original.
+    $temp_file = tempnam(sys_get_temp_dir(), 'phpcbf_test_');
+    copy($file_path, $temp_file);
+
+    $this->processRun(
+      $phpcbf_bin,
+      ['--standard=DrevOps', '--sniffs=' . $sniff, $temp_file],
+      timeout: 120
+    );
+
+    $content = file_get_contents($temp_file);
+    unlink($temp_file);
+
+    $this->assertIsString($content, 'Fixed file content should be readable');
+
+    return $content;
+  }
+
+  /**
    * Returns suffix for assertion messages.
    *
    * Required by ProcessTrait for assertion context.
