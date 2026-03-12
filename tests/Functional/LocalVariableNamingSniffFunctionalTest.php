@@ -207,9 +207,10 @@ class LocalVariableNamingSniffFunctionalTest extends FunctionalTestCase {
       'DrevOps.NamingConventions.LocalVariableNaming'
     );
 
-    // Check if phpcbf actually applied fixes. PHPCS 3 does not support
-    // auto-fixing for this sniff, so skip fix-specific assertions.
-    $fixes_applied = str_contains($fixed, '$module_handler = get_service(');
+    // Check if phpcbf actually applied fixes by looking for a specific
+    // fixed comment+variable pair. PHPCS 3 does not support auto-fixing
+    // for this sniff, so skip fix-specific assertions when fixes are absent.
+    $fixes_applied = str_contains($fixed, '$first_handler');
 
     if ($fixes_applied) {
       // Doc comments should be fixed.
