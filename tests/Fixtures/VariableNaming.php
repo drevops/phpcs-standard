@@ -84,3 +84,14 @@ function functionWithMixedParams(string $valid_param, int $invalidParam): void {
 
   $invalidVar = 'invalid';
 }
+
+/**
+ * Function with variables that have @var comments.
+ */
+function functionWithVarComments(): void {
+  /** @var \Drupal\Core\Extension\ModuleHandler $moduleHandler */
+  $moduleHandler = get_service('module_handler');
+
+  /** @var SomeClass $validVar */
+  $valid_var = get_service('valid');
+}
