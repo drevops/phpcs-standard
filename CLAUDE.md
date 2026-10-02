@@ -10,7 +10,7 @@ This is a PHP_CodeSniffer (PHPCS) standard package (`drevops/phpcs-standard`) th
 - Enforce consistent naming conventions for local variables and function/method parameters
 - Support configurable formats: snakeCase (default) or camelCase
 - Exclude class properties from naming enforcement (properties follow different conventions)
-- Preserve inherited parameter names from interfaces and parent classes
+- Preserve parameter names that an ancestor class, interface or trait declares for the same method
 - Provide auto-fixing support via `phpcbf`
 - Provide a standalone, reusable PHPCS standard for the DrevOps ecosystem
 
@@ -49,7 +49,7 @@ Coverage reports are generated in:
 
 Run a single test file:
 ```bash
-./vendor/bin/phpunit tests/Unit/AbstractVariableSnakeCaseSniffTest.php
+./vendor/bin/phpunit tests/Unit/AbstractVariableNamingSniffTest.php
 ./vendor/bin/phpunit tests/Unit/LocalVariableNamingSniffTest.php
 ./vendor/bin/phpunit tests/Unit/ParameterNamingSniffTest.php
 ```
@@ -86,6 +86,10 @@ composer normalize --dry-run
 
 ### Directory Structure
 - `src/DrevOps/` - Source code for the PHPCS standard
+  - `Helpers/` - Non-sniff classes (outside `Sniffs/`, so PHPCS does not register them)
+    - `ClassLikeDeclaration.php` - Value object: a class-like's name, ancestors and non-private method parameter names
+    - `ClassLikeParser.php` - Reads class-like declarations, namespaces and imports from a token stream
+    - `InheritanceResolver.php` - Finds the parameter names that ancestors declare for a method
   - `Sniffs/NamingConventions/`
     - `AbstractVariableNamingSniff.php` - Base class with shared functionality
     - `LocalVariableNamingSniff.php` - Enforces snake_case for local variables
@@ -93,9 +97,11 @@ composer normalize --dry-run
   - `ruleset.xml` - DrevOps standard definition
 - `tests/` - PHPUnit tests organized by type:
   - `Unit/` - Unit tests for individual sniff methods (using reflection)
-    - `AbstractVariableSnakeCaseSniffTest.php` - Tests shared base class methods
+    - `AbstractVariableNamingSniffTest.php` - Tests shared base class methods
     - `LocalVariableNamingSniffTest.php` - Tests local variable sniff
     - `ParameterNamingSniffTest.php` - Tests parameter sniff
+    - `ClassLikeParserTest.php` - Tests declaration parsing and class name resolution
+    - `InheritanceResolverTest.php` - Tests ancestor lookup and inherited parameter names
     - `UnitTestCase.php` - Base test class with helper methods
   - `Functional/` - Integration tests that run actual phpcs commands
   - `Fixtures/` - Test fixture files with intentional violations
@@ -126,11 +132,21 @@ Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php
 **Helper methods:**
 - `getParameterNames()` - Extracts parameter names from function signature
 - `isInParameterList()` - Checks if variable is in parameter list
+- `findParameterListOwner()` - Finds the function whose parameter list contains a variable
 - `findEnclosingFunction()` - Finds the enclosing function/closure for a variable
 - `isPromotedProperty()` - Detects promoted constructor properties
 - `isParameter()` - Checks if variable is a function/method parameter (with flag for body usage)
 - `isProperty()` - Distinguishes class properties from local variables
-- `isInheritedParameter()` - Detects parameters from interfaces/parent classes
+- `isInheritedParameter()` - Detects parameters whose name an ancestor declares for the same method (delegates to `InheritanceResolver`)
+
+#### InheritanceResolver
+
+Resolves the ancestors of the method's class-like (extended class, implemented or extended interfaces, used traits, transitively) and returns the parameter names they declare for the method:
+- Lookup order: the file being checked, classes already loaded in the PHPCS process (`ReflectionClass`, autoloading disabled), then source files located by Composer's registered class loaders (`findFile()`) and tokenized with the PHPCS tokenizer. Project code is never included or executed.
+- Returns `[]` when no ancestor declares the method, the declared names when one does, and `NULL` when no resolved ancestor declares it and an ancestor is unresolved (the sniff then skips every parameter of the method).
+- Private methods, closures and global functions are never inherited.
+- Caches lookups per class name, parsed source files per path, and the current file's declarations per token stream (path, object id, fixer loop, token count).
+- Names are built from token content, so PHPCS 3 (`T_STRING` + `T_NS_SEPARATOR`) and PHPCS 4 (`T_NAME_*`) give the same result.
 
 #### LocalVariableNamingSniff
 
@@ -153,7 +169,7 @@ Enforces configurable naming convention for **function/method parameters**.
 **What gets checked:**
 - ✅ Function and method parameters (in signature only)
 - ❌ Local variables (handled by LocalVariableNaming)
-- ❌ Parameters inherited from interfaces/parent classes/abstract methods
+- ❌ Parameters whose name an ancestor class, interface or trait declares for the same method (renamed and extra parameters are checked; interface and abstract declarations are checked unless they redeclare an ancestor method)
 - ❌ Promoted constructor properties
 
 **Error codes:**
@@ -174,11 +190,11 @@ Verify installation with: `vendor/bin/phpcs -i` (should list "DrevOps")
 
 This project uses **two complementary testing approaches**:
 
-#### 1. Unit Tests (88 tests, 135 assertions, 100% coverage)
+#### 1. Unit Tests (329 tests, 387 assertions, 100% coverage)
 
 Tests are organized by class hierarchy:
 
-**AbstractVariableSnakeCaseSniffTest.php**
+**AbstractVariableNamingSniffTest.php**
 - Tests all shared base class methods using reflection
 - Tests: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`, `getParameterNames()`, `isProperty()`, `isPromotedProperty()`, `isInheritedParameter()`
 - Each test uses concrete sniff instances (LocalVariableNamingSniff or ParameterNamingSniff) to access protected methods
@@ -194,10 +210,14 @@ Tests are organized by class hierarchy:
 - Validates that parameters are checked and local variables are skipped
 - Includes tests for inherited parameter detection
 
+**ClassLikeParserTest.php** and **InheritanceResolverTest.php**
+- Cover namespaces, imports, name resolution, every class-like kind, same-file, reflected and Composer-located ancestors, unresolved ancestors, cycles and caching
+- `InheritanceResolver` accepts a source locator closure, so tests can point class names at fixture files
+
 **Key testing patterns:**
 - Use PHP reflection to test protected methods
 - Use `processCode()` helper to simulate PHPCS token processing
-- Use `findVariableToken()` and `findFunctionToken()` helpers to locate tokens
+- Use `findVariableToken()` (with an optional occurrence), `findFunctionToken()` and `findFunctionTokenByName()` helpers to locate tokens
 - Each concrete sniff test overrides `setUp()` to configure specific sniff isolation
 
 #### 2. Functional Tests
@@ -219,12 +239,14 @@ Tests include:
 
 **Test fixtures:**
 - `tests/Fixtures/VariableNaming.php` - Contains intentional violations
-- `tests/Fixtures/InheritedParameters.php` - Tests interface/parent class scenarios
+- `tests/Fixtures/InheritedParameters.php` - Same-file ancestors: interfaces, abstract classes, renamed and extra parameters
+- `tests/Fixtures/InheritedParametersCrossFile.php` - Ancestors in other files, a PHPCS interface, internal classes, an enum, an anonymous class and an unresolved parent
+- `tests/Fixtures/Inheritance/` - One ancestor per file, autoloaded through the `autoload-dev` PSR-4 mapping so Composer can locate them
 - `tests/Fixtures/Valid.php` - Clean code for positive testing
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
 
 **Coverage:**
-- Line coverage: 100% (158/158 lines covered)
+- Line coverage: 100% (632/632 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools

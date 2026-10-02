@@ -145,9 +145,38 @@ function processOrder($order_id, $user_data) {  // ✗ Error: NotCamelCase
 ```
 
 Excludes:
-- Parameters inherited from interfaces/parent classes
-- Parameters in interface/abstract method declarations
+- Parameters whose name an ancestor declares for the same method (see [Inherited parameters](#inherited-parameters))
 - Class properties (including promoted constructor properties)
+
+### Inherited parameters
+
+A parameter is skipped when an extended class, an implemented or extended interface, or a used trait declares the same method with a parameter of the same name. Keeping that name means named arguments written against the ancestor keep working. Everything else is checked, including interface and abstract methods that declare a signature for the first time.
+
+```php
+interface Notifier {
+    public function send(string $recipientEmail);              // ✗ Error: NotSnakeCase
+}
+
+class EmailNotifier implements Notifier {
+    public function send(string $recipientEmail) {}            // ✓ Skipped: declared by Notifier
+    public function queue(string $recipientEmail) {}           // ✗ Error: NotSnakeCase
+}
+
+class SmsNotifier implements Notifier {
+    public function send(string $recipientEmail, int $retryCount = 0) {}
+    // $recipientEmail is skipped, $retryCount is reported
+}
+```
+
+Ancestors are looked up in this order:
+
+1. The file being checked.
+2. Classes already loaded by PHP_CodeSniffer, such as PHP's built-in classes and interfaces and PHP_CodeSniffer's own `Sniff` interface.
+3. Source files that your project's Composer autoloader maps. These files are tokenized, never included, so none of your code runs.
+
+If an ancestor can't be found (for example a Drupal module class, which Composer doesn't autoload) and none of the ancestors that were found declares the method, all of the method's parameters are skipped. Private methods are always checked, because they can't implement or override an inherited signature.
+
+Results depend on files other than the one being checked. If you run `phpcs` with `--cache`, clear the cache after renaming a parameter in an ancestor.
 
 ### Error codes
 
