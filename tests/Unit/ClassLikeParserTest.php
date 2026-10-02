@@ -29,11 +29,10 @@ class ClassLikeParserTest extends UnitTestCase {
     $file = $this->processCode($code);
     $parser = new ClassLikeParser();
 
-    $actual = array_map(static fn(ClassLikeDeclaration $declaration): array => [
-      'name' => $declaration->name,
-      'ancestors' => $declaration->ancestors,
-      'methods' => $declaration->methods,
-    ], array_values($parser->parse($file)));
+    $actual = [];
+    foreach ($parser->parse($file) as $declaration) {
+      $actual[] = ['name' => $declaration->name, 'ancestors' => $declaration->ancestors, 'methods' => $declaration->methods];
+    }
 
     $this->assertSame($expected, $actual);
   }

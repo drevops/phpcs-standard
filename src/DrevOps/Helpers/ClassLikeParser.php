@@ -26,7 +26,14 @@ final class ClassLikeParser {
    * T_NAMESPACE covers the 'namespace\' prefix of a relative name, which
    * PHP_CodeSniffer 3 emits as a separate token.
    */
-  protected const array NAME_TOKENS = [T_STRING, T_NS_SEPARATOR, T_NAME_QUALIFIED, T_NAME_FULLY_QUALIFIED, T_NAME_RELATIVE, T_NAMESPACE];
+  protected const array NAME_TOKENS = [
+    T_STRING,
+    T_NS_SEPARATOR,
+    T_NAME_QUALIFIED,
+    T_NAME_FULLY_QUALIFIED,
+    T_NAME_RELATIVE,
+    T_NAMESPACE,
+  ];
 
   /**
    * Parses the class-like declarations of a file.
@@ -217,7 +224,11 @@ final class ClassLikeParser {
   protected function isImportKindKeyword(File $phpcs_file, int $ptr, bool $is_entry_start): bool {
     $tokens = $phpcs_file->getTokens();
 
-    if (!$is_entry_start || $tokens[$ptr]['code'] !== T_STRING || !in_array(strtolower($tokens[$ptr]['content']), ['function', 'const'], TRUE)) {
+    if (!$is_entry_start || $tokens[$ptr]['code'] !== T_STRING) {
+      return FALSE;
+    }
+
+    if (!in_array(strtolower($tokens[$ptr]['content']), ['function', 'const'], TRUE)) {
       return FALSE;
     }
 
@@ -247,6 +258,7 @@ final class ClassLikeParser {
     $closer = $tokens[$class_ptr]['scope_closer'];
 
     $name = NULL;
+
     if ($tokens[$class_ptr]['code'] !== T_ANON_CLASS) {
       $short_name = (string) $phpcs_file->getDeclarationName($class_ptr);
       $name = $short_name === '' ? NULL : ltrim($namespace . '\\' . $short_name, '\\');

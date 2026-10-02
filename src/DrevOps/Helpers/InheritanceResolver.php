@@ -167,7 +167,7 @@ final class InheritanceResolver {
    */
   protected function loadLocalDeclarations(File $phpcs_file): void {
     // The fixer re-tokenizes the same File object on every pass.
-    $key = implode(':', [$phpcs_file->path, spl_object_id($phpcs_file), $phpcs_file->fixer->loops, $phpcs_file->numTokens]);
+    $key = sprintf('%s:%d:%d:%d', $phpcs_file->path, spl_object_id($phpcs_file), $phpcs_file->fixer->loops, $phpcs_file->numTokens);
 
     if ($key === $this->localKey) {
       return;
@@ -215,22 +215,25 @@ final class InheritanceResolver {
    *   The declaration, or NULL when the class is not loaded.
    */
   protected function reflectDeclaration(string $class_name): ?ClassLikeDeclaration {
-    if (class_exists($class_name, FALSE) || interface_exists($class_name, FALSE) || trait_exists($class_name, FALSE)) {
-      $reflection = new \ReflectionClass($class_name);
-      $parent = $reflection->getParentClass();
-      $ancestors = array_merge($parent === FALSE ? [] : [$parent->getName()], $reflection->getInterfaceNames(), $reflection->getTraitNames());
-      $methods = [];
-
-      foreach ($reflection->getMethods() as $method) {
-        if (!$method->isPrivate() && $method->getDeclaringClass()->getName() === $reflection->getName()) {
-          $methods[strtolower($method->getName())] = array_map(static fn(\ReflectionParameter $parameter): string => '$' . $parameter->getName(), $method->getParameters());
-        }
-      }
-
-      return new ClassLikeDeclaration($reflection->getName(), array_values($ancestors), $methods);
+    if (!class_exists($class_name, FALSE) && !interface_exists($class_name, FALSE) && !trait_exists($class_name, FALSE)) {
+      return NULL;
     }
 
-    return NULL;
+    $reflection = new \ReflectionClass($class_name);
+    $parent = $reflection->getParentClass();
+    $ancestors = array_merge($parent === FALSE ? [] : [$parent->getName()], $reflection->getInterfaceNames(), $reflection->getTraitNames());
+    $methods = [];
+
+    foreach ($reflection->getMethods() as $method) {
+      if ($method->isPrivate() || $method->getDeclaringClass()->getName() !== $reflection->getName()) {
+        continue;
+      }
+
+      $parameter_names = array_map(static fn(\ReflectionParameter $parameter): string => '$' . $parameter->getName(), $method->getParameters());
+      $methods[strtolower($method->getName())] = $parameter_names;
+    }
+
+    return new ClassLikeDeclaration($reflection->getName(), array_values($ancestors), $methods);
   }
 
   /**
