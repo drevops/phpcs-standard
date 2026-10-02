@@ -104,13 +104,25 @@ class ParameterNamingSniffTest extends UnitTestCase {
         '<?php function test($invalidParam) {}',
         TRUE,
       ],
-      'inherited_invalid_parameter_interface' => [
+      'interface_declared_invalid_parameter' => [
         '<?php interface TestInterface { public function test($invalidParam); }',
-        FALSE,
+        TRUE,
       ],
-      'inherited_invalid_parameter_extends' => [
+      'unresolved_parent_invalid_parameter' => [
         '<?php class Test extends BaseClass { public function test($invalidParam) {} }',
         FALSE,
+      ],
+      'unresolved_parent_private_method_invalid_parameter' => [
+        '<?php class Test extends BaseClass { private function test($invalidParam) {} }',
+        TRUE,
+      ],
+      'loaded_vendor_interface_inherited_parameters' => [
+        '<?php class Test implements \PHP_CodeSniffer\Sniffs\Sniff { public function register(): array { return []; } public function process(\PHP_CodeSniffer\Files\File $phpcsFile, $stackPtr) {} }',
+        FALSE,
+      ],
+      'internal_interface_own_method_invalid_parameter' => [
+        '<?php class Test implements \Countable { public function count(): int { return 0; } public function add($invalidParam) {} }',
+        TRUE,
       ],
       'underscore_prefixed_parameter' => [
         '<?php function test($_prefixed_param) {}',

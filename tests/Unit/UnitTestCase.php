@@ -59,18 +59,47 @@ abstract class UnitTestCase extends TestCase {
    *   The file object.
    * @param string $variable_name
    *   The variable name (without $).
+   * @param int $occurrence
+   *   Which occurrence of the variable to find, starting at 1.
    *
    * @return int
    *   The token pointer position.
    */
-  protected function findVariableToken(LocalFile $file, string $variable_name): int {
+  protected function findVariableToken(LocalFile $file, string $variable_name, int $occurrence = 1): int {
     $tokens = $file->getTokens();
     foreach ($tokens as $ptr => $token) {
-      if ($token['code'] === T_VARIABLE && ltrim($token['content'], '$') === $variable_name) {
+      if ($token['code'] !== T_VARIABLE || ltrim($token['content'], '$') !== $variable_name) {
+        continue;
+      }
+
+      $occurrence--;
+
+      if ($occurrence === 0) {
         return $ptr;
       }
     }
     $this->fail(sprintf('Variable $%s not found in token stream', $variable_name));
+  }
+
+  /**
+   * Find a function token in the token stream by name.
+   *
+   * @param \PHP_CodeSniffer\Files\LocalFile $file
+   *   The file object.
+   * @param string $function_name
+   *   The function name.
+   *
+   * @return int
+   *   The position of the first function token with the name.
+   */
+  protected function findFunctionTokenByName(LocalFile $file, string $function_name): int {
+    $tokens = $file->getTokens();
+    foreach ($tokens as $ptr => $token) {
+      if ($token['code'] === T_FUNCTION && $file->getDeclarationName($ptr) === $function_name) {
+        return $ptr;
+      }
+    }
+    $this->fail(sprintf('Function %s not found in token stream', $function_name));
   }
 
   /**

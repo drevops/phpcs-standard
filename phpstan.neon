@@ -13,6 +13,11 @@ parameters:
   scanDirectories:
     - vendor/squizlabs/php_codesniffer
 
+  excludePaths:
+    # The fixture extends a missing class on purpose, and PHPStan cannot ignore
+    # errors about unknown parent classes.
+    - tests/Fixtures/InheritedParametersCrossFile.php
+
   ignoreErrors:
     -
       # Since tests and data providers do not have to have parameter docblocks,

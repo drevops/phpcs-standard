@@ -108,16 +108,16 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
    * collects all comment tokens until a non-whitespace/non-comment token
    * is encountered.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return array<int>
    *   Array of comment token positions, or empty array if none found.
    */
-  private function findPrecedingComment(File $phpcsFile, int $stackPtr): array {
-    $tokens = $phpcsFile->getTokens();
+  private function findPrecedingComment(File $phpcs_file, int $stack_ptr): array {
+    $tokens = $phpcs_file->getTokens();
     $comment_tokens = [];
 
     $comment_types = [
@@ -130,7 +130,7 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
       T_DOC_COMMENT_STRING,
     ];
 
-    for ($i = $stackPtr - 1; $i >= 0; $i--) {
+    for ($i = $stack_ptr - 1; $i >= 0; $i--) {
       $code = $tokens[$i]['code'];
 
       if ($code === T_WHITESPACE) {
@@ -141,7 +141,7 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
       // `$other = 1; // comment`). A T_COMMENT whose preceding
       // non-whitespace token is on the same line is trailing, not preceding.
       if ($code === T_COMMENT) {
-        $prev_non_ws = $phpcsFile->findPrevious(T_WHITESPACE, $i - 1, NULL, TRUE);
+        $prev_non_ws = $phpcs_file->findPrevious(T_WHITESPACE, $i - 1, NULL, TRUE);
         if ($prev_non_ws !== FALSE && $tokens[$prev_non_ws]['line'] === $tokens[$i]['line']) {
           break;
         }
@@ -166,30 +166,30 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
    * comment tokens, respecting the configured comment types. Skips comments
    * that contain references to multiple distinct variables.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param array<int> $commentTokens
+   * @param array<int> $comment_tokens
    *   Array of comment token positions.
-   * @param string $oldName
+   * @param string $old_name
    *   The old variable name (without $).
-   * @param string $newName
+   * @param string $new_name
    *   The new variable name (without $).
    *
    * @codeCoverageIgnore
    */
-  private function fixCommentVariable(File $phpcsFile, array $commentTokens, string $oldName, string $newName): void {
-    if ($commentTokens === []) {
+  private function fixCommentVariable(File $phpcs_file, array $comment_tokens, string $old_name, string $new_name): void {
+    if ($comment_tokens === []) {
       return;
     }
 
-    $tokens = $phpcsFile->getTokens();
+    $tokens = $phpcs_file->getTokens();
     $fix_types = array_map('trim', explode(',', $this->fixCommentTypes));
 
     // Collect text only from eligible comment token types to check for
     // multiple variables. This prevents unrelated neighboring comments
     // from blocking a valid fix.
     $all_text = '';
-    foreach ($commentTokens as $ptr) {
+    foreach ($comment_tokens as $ptr) {
       $code = $tokens[$ptr]['code'];
       $is_doc = ($code === T_DOC_COMMENT_STRING);
       $is_inline = ($code === T_COMMENT);
@@ -206,9 +206,9 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
       return;
     }
 
-    $pattern = '/\$' . preg_quote($oldName, '/') . '(?![a-zA-Z0-9_])/';
+    $pattern = '/\$' . preg_quote($old_name, '/') . '(?![a-zA-Z0-9_])/';
 
-    foreach ($commentTokens as $ptr) {
+    foreach ($comment_tokens as $ptr) {
       $token = $tokens[$ptr];
       $code = $token['code'];
       $content = $token['content'];
@@ -231,8 +231,8 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
       }
 
       if (preg_match($pattern, $content) === 1) {
-        $new_content = (string) preg_replace($pattern, '$' . $newName, $content);
-        $phpcsFile->fixer->replaceToken($ptr, $new_content);
+        $new_content = (string) preg_replace($pattern, '$' . $new_name, $content);
+        $phpcs_file->fixer->replaceToken($ptr, $new_content);
       }
     }
   }

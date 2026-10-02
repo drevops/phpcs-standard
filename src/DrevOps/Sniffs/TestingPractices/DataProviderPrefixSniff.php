@@ -113,25 +113,25 @@ class DataProviderPrefixSniff implements Sniff {
   /**
    * Determines if the current file contains a test class.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the current token.
    *
    * @return bool
    *   TRUE if the file contains a test class, FALSE otherwise.
    */
-  private function isTestClass(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  private function isTestClass(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Find the class token.
-    $class_ptr = $phpcsFile->findPrevious(T_CLASS, $stackPtr);
+    $class_ptr = $phpcs_file->findPrevious(T_CLASS, $stack_ptr);
     if ($class_ptr === FALSE) {
       return FALSE;
     }
 
     // Get the class name.
-    $class_name_ptr = $phpcsFile->findNext(T_STRING, $class_ptr + 1, $class_ptr + 3);
+    $class_name_ptr = $phpcs_file->findNext(T_STRING, $class_ptr + 1, $class_ptr + 3);
     // @codeCoverageIgnoreStart
     // PHPCS always sets class names for valid class tokens. This check is
     // defensive code for malformed token streams.
@@ -147,9 +147,9 @@ class DataProviderPrefixSniff implements Sniff {
     }
 
     // Check if class extends TestCase or similar.
-    $extends_ptr = $phpcsFile->findNext(T_EXTENDS, $class_ptr + 1, $tokens[$class_ptr]['scope_opener']);
+    $extends_ptr = $phpcs_file->findNext(T_EXTENDS, $class_ptr + 1, $tokens[$class_ptr]['scope_opener']);
     if ($extends_ptr !== FALSE) {
-      $parent_class_ptr = $phpcsFile->findNext(T_STRING, $extends_ptr + 1, $tokens[$class_ptr]['scope_opener']);
+      $parent_class_ptr = $phpcs_file->findNext(T_STRING, $extends_ptr + 1, $tokens[$class_ptr]['scope_opener']);
       if ($parent_class_ptr !== FALSE) {
         $parent_class = $tokens[$parent_class_ptr]['content'];
         if (preg_match('/TestCase$/', $parent_class) === 1) {
@@ -164,18 +164,18 @@ class DataProviderPrefixSniff implements Sniff {
   /**
    * Extracts all data provider method names from @dataProvider annotations.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
    *
    * @return array<string, bool>
    *   Array of data provider method names as keys.
    */
-  private function findDataProviders(File $phpcsFile): array {
-    $tokens = $phpcsFile->getTokens();
+  private function findDataProviders(File $phpcs_file): array {
+    $tokens = $phpcs_file->getTokens();
     $providers = [];
 
     // Search for @dataProvider annotations in doc comments.
-    for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
+    for ($i = 0; $i < $phpcs_file->numTokens; $i++) {
       if ($tokens[$i]['code'] !== T_DOC_COMMENT_TAG) {
         continue;
       }
@@ -185,7 +185,7 @@ class DataProviderPrefixSniff implements Sniff {
       }
 
       // Find the method name after the tag.
-      $string_ptr = $phpcsFile->findNext(T_DOC_COMMENT_STRING, $i + 1, $i + 3);
+      $string_ptr = $phpcs_file->findNext(T_DOC_COMMENT_STRING, $i + 1, $i + 3);
       if ($string_ptr === FALSE) {
         continue;
       }
@@ -207,28 +207,28 @@ class DataProviderPrefixSniff implements Sniff {
   /**
    * Checks if a method name has the correct prefix.
    *
-   * @param string $methodName
+   * @param string $method_name
    *   The method name to check.
    *
    * @return bool
    *   TRUE if the name starts with the correct prefix, FALSE otherwise.
    */
-  private function hasCorrectPrefix(string $methodName): bool {
-    return str_starts_with($methodName, $this->prefix);
+  private function hasCorrectPrefix(string $method_name): bool {
+    return str_starts_with($method_name, $this->prefix);
   }
 
   /**
    * Suggests a new name for a data provider method.
    *
-   * @param string $currentName
+   * @param string $current_name
    *   The current method name.
    *
    * @return string
    *   The suggested method name with the correct prefix.
    */
-  private function suggestName(string $currentName): string {
+  private function suggestName(string $current_name): string {
     // Remove common prefixes.
-    $name = $currentName;
+    $name = $current_name;
     $common_prefixes = ['provider', 'provide', 'data', 'get'];
 
     foreach ($common_prefixes as $common_prefix) {
@@ -244,7 +244,7 @@ class DataProviderPrefixSniff implements Sniff {
 
     // Ensure we have a name after the prefix.
     if (empty($name)) {
-      $name = $currentName;
+      $name = $current_name;
     }
 
     // Add the configured prefix.
@@ -254,26 +254,26 @@ class DataProviderPrefixSniff implements Sniff {
   /**
    * Fixes the data provider method name throughout the file.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param string $oldName
+   * @param string $old_name
    *   The old method name.
-   * @param string $newName
+   * @param string $new_name
    *   The new method name.
    *
    * @codeCoverageIgnore
    */
-  private function fixProviderName(File $phpcsFile, string $oldName, string $newName): void {
-    $tokens = $phpcsFile->getTokens();
+  private function fixProviderName(File $phpcs_file, string $old_name, string $new_name): void {
+    $tokens = $phpcs_file->getTokens();
 
     // Fix the method declaration.
-    for ($i = 0; $i < $phpcsFile->numTokens; $i++) {
+    for ($i = 0; $i < $phpcs_file->numTokens; $i++) {
       // Fix method name in function declaration.
-      if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === $oldName) {
+      if ($tokens[$i]['code'] === T_STRING && $tokens[$i]['content'] === $old_name) {
         // Check if this is a function declaration.
-        $prev_ptr = $phpcsFile->findPrevious(T_WHITESPACE, $i - 1, NULL, TRUE);
+        $prev_ptr = $phpcs_file->findPrevious(T_WHITESPACE, $i - 1, NULL, TRUE);
         if ($prev_ptr !== FALSE && $tokens[$prev_ptr]['code'] === T_FUNCTION) {
-          $phpcsFile->fixer->replaceToken($i, $newName);
+          $phpcs_file->fixer->replaceToken($i, $new_name);
         }
       }
 
@@ -281,9 +281,9 @@ class DataProviderPrefixSniff implements Sniff {
       if ($tokens[$i]['code'] === T_DOC_COMMENT_STRING) {
         $content = $tokens[$i]['content'];
         // Check if this string is part of @dataProvider annotation.
-        $prev_tag = $phpcsFile->findPrevious(T_DOC_COMMENT_TAG, $i - 1, $i - 3);
-        if ($prev_tag !== FALSE && $tokens[$prev_tag]['content'] === '@dataProvider' && trim($content) === $oldName) {
-          $phpcsFile->fixer->replaceToken($i, $newName);
+        $prev_tag = $phpcs_file->findPrevious(T_DOC_COMMENT_TAG, $i - 1, $i - 3);
+        if ($prev_tag !== FALSE && $tokens[$prev_tag]['content'] === '@dataProvider' && trim($content) === $old_name) {
+          $phpcs_file->fixer->replaceToken($i, $new_name);
         }
       }
     }

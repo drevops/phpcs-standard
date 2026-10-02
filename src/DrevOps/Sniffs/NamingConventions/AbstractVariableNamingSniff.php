@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DrevOps\Sniffs\NamingConventions;
 
+use DrevOps\Helpers\InheritanceResolver;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 
@@ -43,6 +44,11 @@ abstract class AbstractVariableNamingSniff implements Sniff {
     'argv',
     'argc',
   ];
+
+  /**
+   * Resolves the parameter names that ancestors declare for a method.
+   */
+  protected ?InheritanceResolver $inheritanceResolver = NULL;
 
   /**
    * {@inheritdoc}
@@ -259,6 +265,28 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   }
 
   /**
+   * Find the function whose parameter list contains a variable.
+   *
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
+   *   The file being scanned.
+   * @param int $stack_ptr
+   *   The position of the variable token.
+   *
+   * @return int|false
+   *   The position of the function token, or FALSE if the variable is not in
+   *   a parameter list.
+   */
+  protected function findParameterListOwner(File $phpcs_file, int $stack_ptr): int|false {
+    $function_ptr = $phpcs_file->findPrevious([T_FUNCTION, T_CLOSURE], $stack_ptr - 1);
+
+    if ($function_ptr !== FALSE && $this->isInParameterList($phpcs_file, $stack_ptr, $function_ptr)) {
+      return $function_ptr;
+    }
+
+    return FALSE;
+  }
+
+  /**
    * Find the enclosing function for a variable.
    *
    * @param \PHP_CodeSniffer\Files\File $phpcs_file
@@ -286,19 +314,19 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   /**
    * Determine if a variable is a class or trait property.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return bool
    *   TRUE if property, FALSE otherwise.
    */
-  protected function isProperty(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  protected function isProperty(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Check if we're inside a class or trait.
-    $conditions = $tokens[$stackPtr]['conditions'] ?? [];
+    $conditions = $tokens[$stack_ptr]['conditions'] ?? [];
     $in_class_or_trait = FALSE;
 
     foreach ($conditions as $condition_code) {
@@ -314,7 +342,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
 
     // Check if preceded by visibility modifier or var keyword (skip whitespace,
     // comments, static, readonly, type hints, and attributes).
-    $prev_token = $phpcsFile->findPrevious(
+    $prev_token = $phpcs_file->findPrevious(
       [
         T_WHITESPACE,
         T_COMMENT,
@@ -333,7 +361,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
         T_NAME_QUALIFIED,
         T_NAME_RELATIVE,
       ],
-      $stackPtr - 1,
+      $stack_ptr - 1,
       NULL,
       TRUE
     );
@@ -366,19 +394,19 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    * - static::$property
    * - ClassName::$property.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return bool
    *   TRUE if static property access, FALSE otherwise.
    */
-  protected function isStaticPropertyAccess(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  protected function isStaticPropertyAccess(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Find the previous non-whitespace token.
-    $prev_token = $phpcsFile->findPrevious(T_WHITESPACE, $stackPtr - 1, NULL, TRUE);
+    $prev_token = $phpcs_file->findPrevious(T_WHITESPACE, $stack_ptr - 1, NULL, TRUE);
 
     if ($prev_token !== FALSE) {
       // If preceded by :: (T_DOUBLE_COLON), it's a static property access.
@@ -468,11 +496,8 @@ abstract class AbstractVariableNamingSniff implements Sniff {
       return FALSE;
     }
 
-    // First, check if variable is in a parameter list.
-    $function_ptr = $phpcs_file->findPrevious([T_FUNCTION, T_CLOSURE], $stack_ptr - 1);
-
     // If variable is within parameter parentheses, it's a parameter.
-    if ($function_ptr !== FALSE && $this->isInParameterList($phpcs_file, $stack_ptr, $function_ptr)) {
+    if ($this->findParameterListOwner($phpcs_file, $stack_ptr) !== FALSE) {
       return TRUE;
     }
 
@@ -497,102 +522,44 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   }
 
   /**
-   * Check if a variable is a parameter from an inherited/implemented method.
+   * Check if a variable is a parameter whose name an ancestor declares.
    *
-   * When a method implements an interface or overrides a parent method,
-   * parameter names are inherited and can't be changed. We skip validation
-   * for these parameters both in the signature and when used in the body.
+   * A parameter is inherited when an extended class, an implemented or
+   * extended interface, or a used trait declares the same method with a
+   * parameter of the same name. Renamed and additional parameters are not
+   * inherited. When no resolved ancestor declares the method and an ancestor
+   * cannot be resolved, every parameter of the method counts as inherited.
+   * Applies to the parameter in the signature and to its uses in the body.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return bool
    *   TRUE if inherited parameter, FALSE otherwise.
    */
-  protected function isInheritedParameter(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  protected function isInheritedParameter(File $phpcs_file, int $stack_ptr): bool {
+    $function_ptr = $this->findParameterListOwner($phpcs_file, $stack_ptr);
 
-    // Find the enclosing function/method.
-    $function_ptr = $this->findEnclosingFunction($phpcsFile, $stackPtr);
-
-    // @codeCoverageIgnoreStart
-    // This method is only called for variables that isParameter() confirmed as
-    // parameters. Since parameters must always be inside functions, this check
-    // should never fail. Defensive code for unexpected call chains.
     if ($function_ptr === FALSE) {
-      // Not in a function/method.
-      return FALSE;
-    }
-    // @codeCoverageIgnoreEnd
-    // Check if this variable is a parameter of the function.
-    $is_in_parameter_list = $this->isInParameterList($phpcsFile, $stackPtr, $function_ptr);
-
-    // Check if we're in a class/interface/trait by looking at the function's
-    // parent scope.
-    $class_ptr = NULL;
-    $class_type = NULL;
-
-    // Get the function's immediate parent scope.
-    foreach ($tokens[$function_ptr]['conditions'] ?? [] as $ptr => $code) {
-      if (in_array($code, [T_CLASS, T_INTERFACE, T_TRAIT], TRUE)) {
-        $class_ptr = $ptr;
-        $class_type = $code;
-        // Don't break - we want the innermost (last) class/interface/trait.
-      }
+      $function_ptr = $this->findEnclosingFunction($phpcs_file, $stack_ptr);
     }
 
-    // @codeCoverageIgnoreStart
-    // Standalone functions (not in a class/interface/trait) can't have
-    // inherited parameters. This path is reached for global functions, but
-    // marked as ignored because the testIsInheritedParameter test uses
-    // reflection to call this method directly, bypassing normal conditions.
-    if ($class_ptr === NULL) {
-      // Not in a class/interface/trait, can't be inherited.
-      return FALSE;
-    }
-    // @codeCoverageIgnoreEnd
-    // If we're in an interface or abstract method, always skip validation.
-    // These are definitions that others must implement.
-    if ($class_type === T_INTERFACE) {
-      return TRUE;
-    }
-
-    // Check if the method is abstract.
-    $abstract_ptr = $phpcsFile->findPrevious(T_ABSTRACT, $function_ptr, $class_ptr);
-    if ($abstract_ptr !== FALSE) {
-      return TRUE;
-    }
-
-    // For concrete classes, check if class extends or implements something.
-    $class_opener = $tokens[$class_ptr]['scope_opener'] ?? NULL;
-    // @codeCoverageIgnoreStart
-    // PHPCS always sets scope_opener for valid class/interface/trait tokens.
-    // This check is defensive code for malformed token streams.
-    if ($class_opener === NULL) {
-      return FALSE;
-    }
-    // @codeCoverageIgnoreEnd
-    $extends_ptr = $phpcsFile->findNext(T_EXTENDS, $class_ptr, $class_opener);
-    $implements_ptr = $phpcsFile->findNext(T_IMPLEMENTS, $class_ptr, $class_opener);
-
-    if ($extends_ptr === FALSE && $implements_ptr === FALSE) {
-      // No inheritance, parameters are not inherited.
+    if ($function_ptr === FALSE) {
       return FALSE;
     }
 
-    // If the variable is in the parameter list, it's inherited.
-    if ($is_in_parameter_list) {
-      return TRUE;
+    $var_name = $phpcs_file->getTokens()[$stack_ptr]['content'];
+
+    if (!in_array($var_name, $this->getParameterNames($phpcs_file, $function_ptr), TRUE)) {
+      return FALSE;
     }
 
-    // If the variable is in the method body, check if it matches a parameter
-    // name. If it does, it's using an inherited parameter, so skip validation.
-    $var_name = $tokens[$stackPtr]['content'];
-    $param_names = $this->getParameterNames($phpcsFile, $function_ptr);
+    $this->inheritanceResolver ??= new InheritanceResolver();
+    $inherited_names = $this->inheritanceResolver->getInheritedParameterNames($phpcs_file, $function_ptr);
 
-    return in_array($var_name, $param_names, TRUE);
+    return $inherited_names === NULL || in_array($var_name, $inherited_names, TRUE);
   }
 
 }

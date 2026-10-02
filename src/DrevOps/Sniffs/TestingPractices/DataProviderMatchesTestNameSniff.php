@@ -84,25 +84,25 @@ class DataProviderMatchesTestNameSniff implements Sniff {
   /**
    * Determines if the current file contains a test class.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the current token.
    *
    * @return bool
    *   TRUE if the file contains a test class, FALSE otherwise.
    */
-  private function isTestClass(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  private function isTestClass(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Find the class token.
-    $class_ptr = $phpcsFile->findPrevious(T_CLASS, $stackPtr);
+    $class_ptr = $phpcs_file->findPrevious(T_CLASS, $stack_ptr);
     if ($class_ptr === FALSE) {
       return FALSE;
     }
 
     // Get the class name.
-    $class_name_ptr = $phpcsFile->findNext(T_STRING, $class_ptr + 1, $class_ptr + 3);
+    $class_name_ptr = $phpcs_file->findNext(T_STRING, $class_ptr + 1, $class_ptr + 3);
     // @codeCoverageIgnoreStart
     if ($class_name_ptr === FALSE) {
       return FALSE;
@@ -117,9 +117,9 @@ class DataProviderMatchesTestNameSniff implements Sniff {
 
     // Check if class extends TestCase or similar.
     // @codeCoverageIgnoreStart
-    $extends_ptr = $phpcsFile->findNext(T_EXTENDS, $class_ptr + 1, $tokens[$class_ptr]['scope_opener']);
+    $extends_ptr = $phpcs_file->findNext(T_EXTENDS, $class_ptr + 1, $tokens[$class_ptr]['scope_opener']);
     if ($extends_ptr !== FALSE) {
-      $parent_class_ptr = $phpcsFile->findNext(T_STRING, $extends_ptr + 1, $tokens[$class_ptr]['scope_opener']);
+      $parent_class_ptr = $phpcs_file->findNext(T_STRING, $extends_ptr + 1, $tokens[$class_ptr]['scope_opener']);
       if ($parent_class_ptr !== FALSE) {
         $parent_class = $tokens[$parent_class_ptr]['content'];
         if (preg_match('/TestCase$/', $parent_class) === 1) {
@@ -135,46 +135,46 @@ class DataProviderMatchesTestNameSniff implements Sniff {
   /**
    * Checks if a method is a test method.
    *
-   * @param string $methodName
+   * @param string $method_name
    *   The method name to check.
    *
    * @return bool
    *   TRUE if the method is a test method, FALSE otherwise.
    */
-  private function isTestMethod(string $methodName): bool {
+  private function isTestMethod(string $method_name): bool {
     // Test methods must start with "test" followed by uppercase letter.
-    return preg_match('/^test[A-Z]/', $methodName) === 1;
+    return preg_match('/^test[A-Z]/', $method_name) === 1;
   }
 
   /**
    * Extracts the test name from a test method name.
    *
-   * @param string $methodName
+   * @param string $method_name
    *   The test method name (e.g., "testUserLogin").
    *
    * @return string
    *   The test name without "test" prefix (e.g., "UserLogin").
    */
-  private function extractTestName(string $methodName): string {
-    return substr($methodName, 4);
+  private function extractTestName(string $method_name): string {
+    return substr($method_name, 4);
   }
 
   /**
    * Finds data provider from @dataProvider annotation.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $functionPtr
+   * @param int $function_ptr
    *   The position of the function token.
    *
    * @return string|null
    *   The provider method name, or NULL if not found or external.
    */
-  private function findDataProviderAnnotation(File $phpcsFile, int $functionPtr): ?string {
-    $tokens = $phpcsFile->getTokens();
+  private function findDataProviderAnnotation(File $phpcs_file, int $function_ptr): ?string {
+    $tokens = $phpcs_file->getTokens();
 
     // Search backward for docblock before function.
-    $comment_end = $phpcsFile->findPrevious(T_DOC_COMMENT_CLOSE_TAG, $functionPtr - 1);
+    $comment_end = $phpcs_file->findPrevious(T_DOC_COMMENT_CLOSE_TAG, $function_ptr - 1);
     if ($comment_end === FALSE) {
       return NULL;
     }
@@ -197,7 +197,7 @@ class DataProviderMatchesTestNameSniff implements Sniff {
       }
       // @codeCoverageIgnoreEnd
       // Find the method name after the tag.
-      $string_ptr = $phpcsFile->findNext(T_DOC_COMMENT_STRING, $i + 1, $i + 3);
+      $string_ptr = $phpcs_file->findNext(T_DOC_COMMENT_STRING, $i + 1, $i + 3);
       // @codeCoverageIgnoreStart
       if ($string_ptr === FALSE) {
         continue;
@@ -221,45 +221,45 @@ class DataProviderMatchesTestNameSniff implements Sniff {
   /**
    * Finds data provider from #[DataProvider] attribute.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $functionPtr
+   * @param int $function_ptr
    *   The position of the function token.
    *
    * @return string|null
    *   The provider method name, or NULL if not found or external.
    */
-  private function findDataProviderAttribute(File $phpcsFile, int $functionPtr): ?string {
-    $tokens = $phpcsFile->getTokens();
+  private function findDataProviderAttribute(File $phpcs_file, int $function_ptr): ?string {
+    $tokens = $phpcs_file->getTokens();
 
     // Search backward for attribute before function.
-    $attribute_ptr = $phpcsFile->findPrevious(T_ATTRIBUTE, $functionPtr - 1);
+    $attribute_ptr = $phpcs_file->findPrevious(T_ATTRIBUTE, $function_ptr - 1);
     if ($attribute_ptr === FALSE) {
       return NULL;
     }
 
     // Check if attribute is close enough to function (within 10 tokens).
     // @codeCoverageIgnoreStart
-    if ($functionPtr - $attribute_ptr > 10) {
+    if ($function_ptr - $attribute_ptr > 10) {
       return NULL;
     }
     // @codeCoverageIgnoreEnd
     // Find the attribute name.
-    $name_ptr = $phpcsFile->findNext(T_STRING, $attribute_ptr + 1, $functionPtr);
+    $name_ptr = $phpcs_file->findNext(T_STRING, $attribute_ptr + 1, $function_ptr);
     // @codeCoverageIgnoreStart
     if ($name_ptr === FALSE || $tokens[$name_ptr]['content'] !== 'DataProvider') {
       return NULL;
     }
     // @codeCoverageIgnoreEnd
     // Find the opening parenthesis of attribute.
-    $open_paren = $phpcsFile->findNext(T_OPEN_PARENTHESIS, $name_ptr + 1, $functionPtr);
+    $open_paren = $phpcs_file->findNext(T_OPEN_PARENTHESIS, $name_ptr + 1, $function_ptr);
     // @codeCoverageIgnoreStart
     if ($open_paren === FALSE) {
       return NULL;
     }
     // @codeCoverageIgnoreEnd
     // Find the string inside attribute (provider method name).
-    $string_ptr = $phpcsFile->findNext(T_CONSTANT_ENCAPSED_STRING, $open_paren + 1, $functionPtr);
+    $string_ptr = $phpcs_file->findNext(T_CONSTANT_ENCAPSED_STRING, $open_paren + 1, $function_ptr);
     // @codeCoverageIgnoreStart
     if ($string_ptr === FALSE) {
       return NULL;
@@ -280,17 +280,17 @@ class DataProviderMatchesTestNameSniff implements Sniff {
   /**
    * Checks if provider name matches test name.
    *
-   * @param string $providerName
+   * @param string $provider_name
    *   The provider method name.
-   * @param string $testName
+   * @param string $test_name
    *   The test name (without "test" prefix).
    *
    * @return bool
    *   TRUE if provider ends with exact test name, FALSE otherwise.
    */
-  private function providerMatchesTest(string $providerName, string $testName): bool {
+  private function providerMatchesTest(string $provider_name, string $test_name): bool {
     // Provider name must end with exact test name (case-sensitive).
-    return str_ends_with($providerName, $testName);
+    return str_ends_with($provider_name, $test_name);
   }
 
 }
