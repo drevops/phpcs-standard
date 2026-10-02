@@ -246,7 +246,7 @@ Tests include:
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
 
 **Coverage:**
-- Line coverage: 100% (637/637 lines covered)
+- Line coverage: 100% (638/638 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools

@@ -6,6 +6,8 @@ namespace DrevOps\PhpcsStandard\Tests\Unit;
 
 use DrevOps\Helpers\ClassLikeDeclaration;
 use DrevOps\Helpers\InheritanceResolver;
+use DrevOps\PhpcsStandard\Tests\Fixtures\AbstractClassDefiningInheritedParam;
+use DrevOps\PhpcsStandard\Tests\Fixtures\InterfaceDefiningInheritedParams;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -289,8 +291,8 @@ class InheritanceResolverTest extends UnitTestCase {
       ],
       'several_classes_from_one_source_file' => [
         [
-          'DrevOps\PhpcsStandard\Tests\Fixtures\InterfaceDefiningInheritedParams' => 'InheritedParameters.php',
-          'DrevOps\PhpcsStandard\Tests\Fixtures\AbstractClassDefiningInheritedParam' => 'InheritedParameters.php',
+          InterfaceDefiningInheritedParams::class => 'InheritedParameters.php',
+          AbstractClassDefiningInheritedParam::class => 'InheritedParameters.php',
         ],
         '<?php namespace DrevOps\PhpcsStandard\Tests\Fixtures; class Test extends AbstractClassDefiningInheritedParam implements InterfaceDefiningInheritedParams { public function methodWithInheritedParams($interfaceParamOne) {} public function methodWithInheritedParam($abstractParam) {} }',
         'methodWithInheritedParam',

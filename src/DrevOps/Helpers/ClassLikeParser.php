@@ -50,7 +50,9 @@ final class ClassLikeParser {
     $imports = [];
     $declarations = [];
 
-    foreach ($tokens as $ptr => $token) {
+    for ($ptr = 0; $ptr < $phpcs_file->numTokens; $ptr++) {
+      $token = $tokens[$ptr];
+
       if ($token['code'] === T_NAMESPACE && $this->isNamespaceDeclaration($phpcs_file, $ptr)) {
         $namespace = $this->readNamespaceName($phpcs_file, $ptr);
         $imports = [];
