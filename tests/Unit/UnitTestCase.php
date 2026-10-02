@@ -82,6 +82,34 @@ abstract class UnitTestCase extends TestCase {
   }
 
   /**
+   * Find a token in the token stream by code.
+   *
+   * @param \PHP_CodeSniffer\Files\LocalFile $file
+   *   The file object.
+   * @param int|string $code
+   *   The token code.
+   * @param int $occurrence
+   *   Which occurrence of the token to find, starting at 1.
+   *
+   * @return int
+   *   The token pointer position.
+   */
+  protected function findTokenByCode(LocalFile $file, int|string $code, int $occurrence = 1): int {
+    foreach ($file->getTokens() as $ptr => $token) {
+      if ($token['code'] !== $code) {
+        continue;
+      }
+
+      $occurrence--;
+
+      if ($occurrence === 0) {
+        return $ptr;
+      }
+    }
+    $this->fail(sprintf('Token %s not found in token stream', is_int($code) ? token_name($code) : $code));
+  }
+
+  /**
    * Find a function token in the token stream by name.
    *
    * @param \PHP_CodeSniffer\Files\LocalFile $file

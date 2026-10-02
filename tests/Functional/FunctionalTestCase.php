@@ -143,8 +143,10 @@ abstract class FunctionalTestCase extends TestCase {
     $this->assertFileExists($phpcbf_bin, 'PHPCBF binary must exist');
     $this->assertFileExists($file_path, 'File to fix must exist');
 
-    // Copy fixture to a temp file so we don't modify the original.
-    $temp_file = tempnam(sys_get_temp_dir(), 'phpcbf_test_');
+    // Copy fixture to a temp file so we don't modify the original. The copy
+    // keeps the '.php' extension, as PHP_CodeSniffer 3 skips files without a
+    // known extension.
+    $temp_file = static::$tmp . DIRECTORY_SEPARATOR . 'phpcbf_' . basename($file_path);
     copy($file_path, $temp_file);
 
     $this->processRun(
@@ -154,7 +156,6 @@ abstract class FunctionalTestCase extends TestCase {
     );
 
     $content = file_get_contents($temp_file);
-    unlink($temp_file);
 
     $this->assertIsString($content, 'Fixed file content should be readable');
 
