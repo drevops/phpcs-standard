@@ -29,12 +29,12 @@ final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
   /**
    * Error code for non-snake_case variables.
    */
-  public const CODE_VARIABLE_NOT_SNAKE_CASE = 'NotSnakeCase';
+  public const string CODE_VARIABLE_NOT_SNAKE_CASE = 'NotSnakeCase';
 
   /**
    * Error code for non-camelCase variables.
    */
-  public const CODE_VARIABLE_NOT_CAMEL_CASE = 'NotCamelCase';
+  public const string CODE_VARIABLE_NOT_CAMEL_CASE = 'NotCamelCase';
 
   /**
    * {@inheritdoc}

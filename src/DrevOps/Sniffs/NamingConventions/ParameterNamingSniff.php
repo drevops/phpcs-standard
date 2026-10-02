@@ -19,12 +19,12 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
   /**
    * Error code for non-snake_case parameters.
    */
-  public const CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
+  public const string CODE_PARAMETER_NOT_SNAKE_CASE = 'NotSnakeCase';
 
   /**
    * Error code for non-camelCase parameters.
    */
-  public const CODE_PARAMETER_NOT_CAMEL_CASE = 'NotCamelCase';
+  public const string CODE_PARAMETER_NOT_CAMEL_CASE = 'NotCamelCase';
 
   /**
    * {@inheritdoc}

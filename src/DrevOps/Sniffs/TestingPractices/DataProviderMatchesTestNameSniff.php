@@ -27,7 +27,7 @@ class DataProviderMatchesTestNameSniff implements Sniff {
   /**
    * Error code for invalid provider name.
    */
-  private const CODE_INVALID_PROVIDER_NAME = 'InvalidProviderName';
+  private const string CODE_INVALID_PROVIDER_NAME = 'InvalidProviderName';
 
   /**
    * {@inheritdoc}
