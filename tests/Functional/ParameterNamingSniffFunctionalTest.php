@@ -50,12 +50,66 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
   }
 
   /**
-   * Test that inherited parameters are NOT flagged.
+   * Test that only parameters declared by a same-file ancestor are exempt.
    */
-  public function testInheritedParametersAreNotFlagged(): void {
+  public function testInheritedParameters(): void {
     $this->runPhpcs(
       static::$fixtures . DIRECTORY_SEPARATOR . 'InheritedParameters.php',
       [
+        // Interface method declared by the interface itself.
+        [
+          'message' => 'Variable "$interfaceParamOne" is not in snakeCase format; try "$interface_param_one"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$interfaceParamTwo" is not in snakeCase format; try "$interface_param_two"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method declared by the child interface itself.
+        [
+          'message' => 'Variable "$childInterfaceParam" is not in snakeCase format; try "$child_interface_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Abstract method declared by the abstract class itself.
+        [
+          'message' => 'Variable "$abstractParam" is not in snakeCase format; try "$abstract_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Concrete method following an abstract method.
+        [
+          'message' => 'Variable "$concreteParam" is not in snakeCase format; try "$concrete_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method the implemented interface does not declare.
+        [
+          'message' => 'Variable "$ownParam" is not in snakeCase format; try "$own_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Parameter added to an overriding method.
+        [
+          'message' => 'Variable "$extraParam" is not in snakeCase format; try "$extra_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Parameter renamed in an overriding method.
+        [
+          'message' => 'Variable "$renamedParam" is not in snakeCase format; try "$renamed_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Private method in a class with an ancestor.
+        [
+          'message' => 'Variable "$privateParam" is not in snakeCase format; try "$private_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Class without ancestors.
         [
           'message' => 'Variable "$invalidNonInheritedParamOne" is not in snakeCase format; try "$invalid_non_inherited_param_one"',
           'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
@@ -63,6 +117,98 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
         ],
         [
           'message' => 'Variable "$invalidNonInheritedParamTwo" is not in snakeCase format; try "$invalid_non_inherited_param_two"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+      ]
+    );
+  }
+
+  /**
+   * Test that ancestors declared in other files are resolved.
+   *
+   * Covers ancestors located through Composer, an interface loaded by
+   * PHP_CodeSniffer, internal classes, an enum, an anonymous class and a
+   * parent that cannot be resolved.
+   */
+  public function testCrossFileInheritedParameters(): void {
+    $this->runPhpcs(
+      static::$fixtures . DIRECTORY_SEPARATOR . 'InheritedParametersCrossFile.php',
+      [
+        // Method declared by the child interface itself.
+        [
+          'message' => 'Variable "$childInterfaceParam" is not in snakeCase format; try "$child_interface_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Parameter added to an inherited constructor.
+        [
+          'message' => 'Variable "$extraConstructorParam" is not in snakeCase format; try "$extra_constructor_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method that is private in the parent.
+        [
+          'message' => 'Variable "$privateParam" is not in snakeCase format; try "$private_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method no ancestor declares.
+        [
+          'message' => 'Variable "$ownParam" is not in snakeCase format; try "$own_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Private method.
+        [
+          'message' => 'Variable "$helperParam" is not in snakeCase format; try "$helper_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method the PHP_CodeSniffer interface does not declare.
+        [
+          'message' => 'Variable "$phpcsFile" is not in snakeCase format; try "$phpcs_file"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Parameter added to an internal constructor.
+        [
+          'message' => 'Variable "$resourceName" is not in snakeCase format; try "$resource_name"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method no internal ancestor declares.
+        [
+          'message' => 'Variable "$resourceName" is not in snakeCase format; try "$resource_name"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$itemName" is not in snakeCase format; try "$item_name"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Parameter added to a method found in a resolved ancestor.
+        [
+          'message' => 'Variable "$extraParam" is not in snakeCase format; try "$extra_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Private method in a class with an unresolved parent.
+        [
+          'message' => 'Variable "$helperParam" is not in snakeCase format; try "$helper_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Enum method no ancestor declares.
+        [
+          'message' => 'Variable "$enumParam" is not in snakeCase format; try "$enum_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Anonymous class method no ancestor declares.
+        [
+          'message' => 'Variable "$anonymousParam" is not in snakeCase format; try "$anonymous_param"',
           'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
           'fixable' => TRUE,
         ],

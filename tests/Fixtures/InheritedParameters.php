@@ -6,34 +6,68 @@ namespace DrevOps\PhpcsStandard\Tests\Fixtures;
 
 interface InterfaceDefiningInheritedParams {
 
-  public function methodWithInheritedParams(string $validInheritedParamOne, int $validInheritedParamTwo): bool;
+  // Declared here first: checked.
+  public function methodWithInheritedParams(string $interfaceParamOne, int $interfaceParamTwo): bool;
+
+}
+
+interface InterfaceExtendingInterface extends InterfaceDefiningInheritedParams {
+
+  // Redeclared from the parent interface: exempt.
+  public function methodWithInheritedParams(string $interfaceParamOne, int $interfaceParamTwo): bool;
+
+  // Declared here first: checked.
+  public function methodDeclaredByChildInterface(string $childInterfaceParam): void;
 
 }
 
 abstract class AbstractClassDefiningInheritedParam {
 
-  abstract public function methodWithInheritedParam(array $validInheritedParam): void;
+  // Declared here first: checked.
+  abstract public function methodWithInheritedParam(array $abstractParam): void;
+
+  // Follows an abstract method but is not inherited: checked.
+  public function concreteMethodAfterAbstract(array $concreteParam): void {
+  }
 
 }
 
 class ClassImplementingInterface implements InterfaceDefiningInheritedParams {
 
-  public function methodWithInheritedParams(string $validInheritedParamOne, int $validInheritedParamTwo): bool {
+  // Implements the interface method with the same names: exempt.
+  public function methodWithInheritedParams(string $interfaceParamOne, int $interfaceParamTwo): bool {
     $valid_snake_case = 'valid';
-    $result = $validInheritedParamOne . $validInheritedParamTwo;
+    $result = $interfaceParamOne . $interfaceParamTwo;
     $localInvalidCamelCase = 'error';
 
     return TRUE;
+  }
+
+  // Not declared by the interface: checked.
+  public function methodNotInInterface(string $ownParam): void {
   }
 
 }
 
 class ClassExtendingAbstractClass extends AbstractClassDefiningInheritedParam {
 
-  public function methodWithInheritedParam(array $validInheritedParam): void {
-    $valid_snake_case = $validInheritedParam['key'];
-    $another_valid = $validInheritedParam['value'];
+  // Keeps the inherited name (exempt) and adds a parameter (checked).
+  public function methodWithInheritedParam(array $abstractParam, ?string $extraParam = NULL): void {
+    $valid_snake_case = $abstractParam['key'];
+    $another_valid = $extraParam;
     $localInvalidCamelCase = 'error';
+  }
+
+}
+
+class ClassRenamingInheritedParam extends AbstractClassDefiningInheritedParam {
+
+  // Renames the inherited parameter: checked.
+  public function methodWithInheritedParam(array $renamedParam): void {
+  }
+
+  // Private methods never inherit a signature: checked.
+  private function privateHelper(string $privateParam): void {
   }
 
 }

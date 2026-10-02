@@ -370,11 +370,13 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    *   Variable name to check.
    * @param bool $expected
    *   Expected result.
+   * @param int $occurrence
+   *   Which occurrence of the variable to check, starting at 1.
    */
   #[DataProvider('providerIsInheritedParameter')]
-  public function testIsInheritedParameter(string $code, string $variable_name, bool $expected): void {
+  public function testIsInheritedParameter(string $code, string $variable_name, bool $expected, int $occurrence = 1): void {
     $file = $this->processCode($code);
-    $variable_ptr = $this->findVariableToken($file, $variable_name);
+    $variable_ptr = $this->findVariableToken($file, $variable_name, $occurrence);
     $sniff = new ParameterNamingSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('isInheritedParameter');
@@ -384,6 +386,9 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
 
   /**
    * Data provider for isInheritedParameter tests.
+   *
+   * Child classes are declared before their same-file ancestors, so the
+   * occurrences of a variable are counted from the child.
    *
    * @return array<string, array<mixed>>
    *   Test cases.
@@ -395,15 +400,35 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         'parameter',
         FALSE,
       ],
+      'variable_outside_function' => [
+        '<?php $parameter = 1;',
+        'parameter',
+        FALSE,
+      ],
       'interface_method' => [
         '<?php interface TestInterface { public function test($parameter); }',
+        'parameter',
+        FALSE,
+      ],
+      'interface_method_redeclared_from_parent_interface' => [
+        '<?php interface ChildInterface extends ParentInterface { public function test($parameter); } interface ParentInterface { public function test($parameter); }',
+        'parameter',
+        TRUE,
+      ],
+      'interface_method_with_unresolved_parent_interface' => [
+        '<?php interface ChildInterface extends MissingInterface { public function test($parameter); }',
         'parameter',
         TRUE,
       ],
       'abstract_method' => [
         '<?php abstract class Test { abstract public function test($parameter); }',
         'parameter',
-        TRUE,
+        FALSE,
+      ],
+      'method_after_abstract_method' => [
+        '<?php abstract class Test { abstract public function first(); public function test($parameter) {} }',
+        'parameter',
+        FALSE,
       ],
       'extending_class' => [
         '<?php class Test extends BaseClass { public function test($parameter) {} }',
@@ -420,20 +445,74 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         'parameter',
         FALSE,
       ],
+      'overriding_same_file_parent_method' => [
+        '<?php class Test extends Base { public function test($parameter) {} } class Base { public function test($parameter) {} }',
+        'parameter',
+        TRUE,
+      ],
+      'own_method_with_same_file_parent' => [
+        '<?php class Test extends Base { public function own($parameter) {} } class Base { public function test($parameter) {} }',
+        'parameter',
+        FALSE,
+      ],
+      'renamed_parameter_of_same_file_parent_method' => [
+        '<?php class Test extends Base { public function test($renamed) {} } class Base { public function test($parameter) {} }',
+        'renamed',
+        FALSE,
+      ],
+      'private_method_with_unresolved_parent' => [
+        '<?php class Test extends BaseClass { private function test($parameter) {} }',
+        'parameter',
+        FALSE,
+      ],
+      'closure_in_method_of_extending_class' => [
+        '<?php class Test extends BaseClass { public function test() { $closure = function ($parameter) {}; } }',
+        'parameter',
+        FALSE,
+      ],
+      'internal_interface_method' => [
+        '<?php class Test implements \ArrayAccess { public function offsetGet(mixed $offset): mixed {} }',
+        'offset',
+        TRUE,
+      ],
+      'own_method_with_internal_interface' => [
+        '<?php class Test implements \Countable { public function add($parameter) {} }',
+        'parameter',
+        FALSE,
+      ],
+      'loaded_vendor_interface_method' => [
+        '<?php class Test implements \PHP_CodeSniffer\Sniffs\Sniff { public function process(\PHP_CodeSniffer\Files\File $phpcsFile, $stackPtr) {} }',
+        'phpcsFile',
+        TRUE,
+      ],
       'extending_class_variable_in_body_matches_param' => [
         '<?php class Test extends BaseClass { public function test($parameter) { $parameter = 1; } }',
         'parameter',
         TRUE,
+        2,
       ],
       'implementing_class_variable_in_body_matches_param' => [
         '<?php class Test implements TestInterface { public function test($parameter) { $parameter = 1; } }',
         'parameter',
         TRUE,
+        2,
       ],
       'extending_class_variable_in_body_not_param' => [
         '<?php class Test extends BaseClass { public function test($parameter) { $other_var = 1; } }',
         'other_var',
         FALSE,
+      ],
+      'same_file_parent_variable_in_body_matches_param' => [
+        '<?php class Test extends Base { public function test($parameter) { $parameter = 1; } } class Base { public function test($parameter) {} }',
+        'parameter',
+        TRUE,
+        2,
+      ],
+      'same_file_parent_variable_in_body_matches_renamed_param' => [
+        '<?php class Test extends Base { public function test($renamed) { $renamed = 1; } } class Base { public function test($parameter) {} }',
+        'renamed',
+        FALSE,
+        2,
       ],
     ];
   }

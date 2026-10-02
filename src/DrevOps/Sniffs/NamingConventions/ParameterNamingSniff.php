@@ -11,8 +11,8 @@ use PHP_CodeSniffer\Files\File;
  *
  * This sniff checks that function and method parameters use the configured
  * naming format (snakeCase or camelCase). Local variables and class properties
- * are excluded. Parameters inherited from interfaces/parent classes are also
- * excluded.
+ * are excluded. A parameter is also excluded when an ancestor class, interface
+ * or trait declares the same method with a parameter of the same name.
  */
 final class ParameterNamingSniff extends AbstractVariableNamingSniff {
 
@@ -49,8 +49,8 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
       return;
     }
 
-    // Skip parameters from inherited/implemented methods as they can't be
-    // changed.
+    // Keep names that an ancestor declares for the same method, so named
+    // arguments written against the ancestor keep working.
     if ($this->isInheritedParameter($phpcsFile, $stackPtr)) {
       return;
     }
