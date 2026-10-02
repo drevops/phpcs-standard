@@ -314,19 +314,19 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   /**
    * Determine if a variable is a class or trait property.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return bool
    *   TRUE if property, FALSE otherwise.
    */
-  protected function isProperty(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  protected function isProperty(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Check if we're inside a class or trait.
-    $conditions = $tokens[$stackPtr]['conditions'] ?? [];
+    $conditions = $tokens[$stack_ptr]['conditions'] ?? [];
     $in_class_or_trait = FALSE;
 
     foreach ($conditions as $condition_code) {
@@ -342,7 +342,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
 
     // Check if preceded by visibility modifier or var keyword (skip whitespace,
     // comments, static, readonly, type hints, and attributes).
-    $prev_token = $phpcsFile->findPrevious(
+    $prev_token = $phpcs_file->findPrevious(
       [
         T_WHITESPACE,
         T_COMMENT,
@@ -361,7 +361,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
         T_NAME_QUALIFIED,
         T_NAME_RELATIVE,
       ],
-      $stackPtr - 1,
+      $stack_ptr - 1,
       NULL,
       TRUE
     );
@@ -394,19 +394,19 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    * - static::$property
    * - ClassName::$property.
    *
-   * @param \PHP_CodeSniffer\Files\File $phpcsFile
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
-   * @param int $stackPtr
+   * @param int $stack_ptr
    *   The position of the variable token.
    *
    * @return bool
    *   TRUE if static property access, FALSE otherwise.
    */
-  protected function isStaticPropertyAccess(File $phpcsFile, int $stackPtr): bool {
-    $tokens = $phpcsFile->getTokens();
+  protected function isStaticPropertyAccess(File $phpcs_file, int $stack_ptr): bool {
+    $tokens = $phpcs_file->getTokens();
 
     // Find the previous non-whitespace token.
-    $prev_token = $phpcsFile->findPrevious(T_WHITESPACE, $stackPtr - 1, NULL, TRUE);
+    $prev_token = $phpcs_file->findPrevious(T_WHITESPACE, $stack_ptr - 1, NULL, TRUE);
 
     if ($prev_token !== FALSE) {
       // If preceded by :: (T_DOUBLE_COLON), it's a static property access.
