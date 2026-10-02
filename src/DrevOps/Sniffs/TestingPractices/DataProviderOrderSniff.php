@@ -36,12 +36,12 @@ class DataProviderOrderSniff implements Sniff {
   /**
    * Error code for provider appearing before test.
    */
-  private const CODE_PROVIDER_BEFORE_TEST = 'ProviderBeforeTest';
+  private const string CODE_PROVIDER_BEFORE_TEST = 'ProviderBeforeTest';
 
   /**
    * Error code for provider appearing after test.
    */
-  private const CODE_PROVIDER_AFTER_TEST = 'ProviderAfterTest';
+  private const string CODE_PROVIDER_AFTER_TEST = 'ProviderAfterTest';
 
   /**
    * {@inheritdoc}

@@ -26,7 +26,7 @@ class DataProviderPrefixSniff implements Sniff {
   /**
    * Error code for invalid prefix violations.
    */
-  private const CODE_INVALID_PREFIX = 'InvalidPrefix';
+  private const string CODE_INVALID_PREFIX = 'InvalidPrefix';
 
   /**
    * Cache of data providers found in the current file.

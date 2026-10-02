@@ -25,7 +25,7 @@ jobs:
 
     strategy:
       matrix:
-        php-versions: ['8.2', '8.3', '8.4', '8.5']
+        php-versions: ['8.3', '8.4', '8.5']
         phpcs-versions: ['3', '4']
 
     steps:
@@ -49,15 +49,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          if [ "${{ matrix.php-versions }}" == "8.2" ]; then
-            composer require --dev phpunit/phpunit:^11 --no-update
-          fi
           if [ "${{ matrix.phpcs-versions }}" == "3" ]; then
             composer require squizlabs/php_codesniffer:^3.10 --no-update --with-all-dependencies
-            composer require --dev drupal/coder:^8.3 --no-update --with-all-dependencies
+            composer require --dev drupal/coder:^8.3.31 --no-update --with-all-dependencies
           elif [ "${{ matrix.phpcs-versions }}" == "4" ]; then
             composer require squizlabs/php_codesniffer:^4 --no-update --with-all-dependencies
-            composer require --dev drupal/coder:^9@alpha --no-update --with-all-dependencies
+            composer require --dev drupal/coder:^9.0.1 --no-update --with-all-dependencies
           fi
           composer install ${{ matrix.php-versions == '8.5' && '--ignore-platform-reqs' || '' }}
 
@@ -71,17 +68,11 @@ jobs:
         continue-on-error: ${{ vars.CI_LINT_IGNORE_FAILURE == '1' }}
 
       - name: Run tests
-        run: |
-          if [ "${{ matrix.php-versions }}" != "8.2" ]; then
-            composer test-coverage
-          else
-            composer test
-          fi
+        run: composer test-coverage
         continue-on-error: ${{ vars.CI_TEST_IGNORE_FAILURE == '1' }}
 
       - name: Upload coverage report as an artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        if: ${{ matrix.php-versions != '8.2' }}
         with:
           name: ${{github.job}}-code-coverage-report-php${{ matrix.php-versions }}-phpcs${{ matrix.phpcs-versions }}
           path: .logs
@@ -90,7 +81,7 @@ jobs:
 
       - name: Upload test results to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        if: ${{ env.CODECOV_TOKEN != '' && matrix.php-versions != '8.2' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         with:
           files: .logs/junit.xml
           report_type: test_results
@@ -100,7 +91,7 @@ jobs:
 
       - name: Upload coverage report to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7
-        if: ${{ env.CODECOV_TOKEN != '' && matrix.php-versions != '8.2' }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         with:
           files: .logs/cobertura.xml
           fail_ci_if_error: true

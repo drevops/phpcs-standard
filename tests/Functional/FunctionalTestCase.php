@@ -161,16 +161,4 @@ abstract class FunctionalTestCase extends TestCase {
     return $content;
   }
 
-  /**
-   * Returns suffix for assertion messages.
-   *
-   * Required by ProcessTrait for assertion context.
-   *
-   * @return string
-   *   Empty string as we don't need custom suffixes.
-   */
-  protected function assertionSuffix(): string {
-    return '';
-  }
-
 }
