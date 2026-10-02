@@ -233,7 +233,7 @@ final class InheritanceResolver {
       $methods[strtolower($method->getName())] = $parameter_names;
     }
 
-    return new ClassLikeDeclaration($reflection->getName(), array_values($ancestors), $methods);
+    return new ClassLikeDeclaration($reflection->getName(), $ancestors, $methods);
   }
 
   /**
