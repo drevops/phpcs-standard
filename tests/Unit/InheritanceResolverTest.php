@@ -300,11 +300,23 @@ class InheritanceResolverTest extends UnitTestCase {
   }
 
   /**
+   * Test that a failing source locator leaves the ancestor unresolved.
+   */
+  public function testLocatorFailureLeavesAncestorUnresolved(): void {
+    $resolver = new InheritanceResolver(static function (string $class_name): never {
+      throw new \RuntimeException('Cannot locate ' . $class_name);
+    });
+    $file = $this->processCode('<?php class Test extends Base { public function run($fooBar) {} }');
+
+    $this->assertNull($resolver->getInheritedParameterNames($file, $this->findFunctionTokenByName($file, 'run')));
+  }
+
+  /**
    * Test that each class is located once per resolver.
    */
   public function testLookupsAreCached(): void {
     $located = [];
-    $resolver = new InheritanceResolver(static function (string $class_name) use (&$located): ?string {
+    $resolver = new InheritanceResolver(static function (string $class_name) use (&$located): null {
       $located[] = $class_name;
 
       return NULL;

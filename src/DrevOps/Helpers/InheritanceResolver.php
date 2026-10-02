@@ -248,17 +248,22 @@ final class InheritanceResolver {
    *   The declaration, or NULL when no located source file declares it.
    */
   protected function parseDeclaration(string $class_name, File $phpcs_file): ?ClassLikeDeclaration {
-    $path = ($this->sourceLocator)($class_name);
+    try {
+      $path = ($this->sourceLocator)($class_name);
 
-    if (!is_string($path)) {
+      if (!is_string($path)) {
+        return NULL;
+      }
+
+      $this->sourceFiles[$path] ??= $this->parseSourceFile($path, $phpcs_file);
+
+      return $this->sourceFiles[$path][strtolower($class_name)] ?? NULL;
+    }
+    catch (\Exception) {
+      // Reading an ancestor must not abort the check of the current file, so
+      // a failure marks the ancestor unresolved.
       return NULL;
     }
-
-    if (!isset($this->sourceFiles[$path])) {
-      $this->sourceFiles[$path] = $this->parseSourceFile($path, $phpcs_file);
-    }
-
-    return $this->sourceFiles[$path][strtolower($class_name)] ?? NULL;
   }
 
   /**

@@ -190,7 +190,7 @@ Verify installation with: `vendor/bin/phpcs -i` (should list "DrevOps")
 
 This project uses **two complementary testing approaches**:
 
-#### 1. Unit Tests (329 tests, 387 assertions, 100% coverage)
+#### 1. Unit Tests (330 tests, 388 assertions, 100% coverage)
 
 Tests are organized by class hierarchy:
 
@@ -246,7 +246,7 @@ Tests include:
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
 
 **Coverage:**
-- Line coverage: 100% (636/636 lines covered)
+- Line coverage: 100% (637/637 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools
