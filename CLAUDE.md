@@ -234,7 +234,7 @@ Tests include:
    - Relaxes array line length and function comment rules for test files
 2. **PHPStan** (Level 9) - Static analysis with strict type checking
 3. **Rector** - Automated refactoring and code modernization targeting PHP 8.3+
-4. **PHPUnit 11** - Testing framework with coverage reporting
+4. **PHPUnit 12** - Testing framework with coverage reporting
 
 ### Key Technical Details
 
