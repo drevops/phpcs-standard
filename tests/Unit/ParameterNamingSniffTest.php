@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace DrevOps\PhpcsStandard\Tests\Unit;
 
+use PHP_CodeSniffer\Files\DummyFile;
 use PHP_CodeSniffer\Ruleset;
 use DrevOps\Sniffs\NamingConventions\ParameterNamingSniff;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -144,6 +145,55 @@ class ParameterNamingSniffTest extends UnitTestCase {
       'closure_use_clause' => ['<?php $invalidVar = 1; $closure = function () use ($invalidVar) { return $invalidVar; };', FALSE],
       'arrow_function_capture' => ['<?php $double = fn($valid_param) => $valid_param * $invalidFactor;', FALSE],
     ];
+  }
+
+  /**
+   * Test process method with the drupalRoot property.
+   *
+   * @param mixed $drupal_root
+   *   The drupalRoot property value.
+   * @param int $expected_count
+   *   Expected number of errors.
+   */
+  #[DataProvider('dataProviderProcessDrupalRoot')]
+  public function testProcessDrupalRoot(mixed $drupal_root, int $expected_count): void {
+    $sniff = $this->ruleset->sniffs[ParameterNamingSniff::class] ?? NULL;
+    $this->assertInstanceOf(ParameterNamingSniff::class, $sniff);
+    $sniff->drupalRoot = $drupal_root;
+
+    $file = $this->processCode('<?php namespace Drupal\my_module; use Drupal\views\Plugin\views\field\FieldPluginBase; class Test extends FieldPluginBase { public function render($resultRow) {} public function formatLabel($labelText) {} }');
+
+    $this->assertSame($expected_count, $file->getErrorCount());
+  }
+
+  /**
+   * Data provider for process method tests with the drupalRoot property.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderProcessDrupalRoot(): array {
+    return [
+      'drupal_root' => [dirname(__DIR__) . '/Fixtures/Drupal', 2],
+      'false' => [FALSE, 0],
+      'not_set' => [NULL, 0],
+    ];
+  }
+
+  /**
+   * Test that process method throws exception for an invalid drupalRoot.
+   */
+  public function testProcessThrowsExceptionForInvalidDrupalRoot(): void {
+    $sniff = $this->ruleset->sniffs[ParameterNamingSniff::class] ?? NULL;
+    $this->assertInstanceOf(ParameterNamingSniff::class, $sniff);
+    $sniff->drupalRoot = 'tests/Fixtures';
+
+    // DummyFile leaves no temporary file behind when processing throws.
+    $file = new DummyFile('<?php function test($invalidParam) {}', $this->ruleset, $this->config);
+
+    $this->expectException(\RuntimeException::class);
+    $this->expectExceptionMessage('Invalid drupalRoot "tests/Fixtures": core/lib/Drupal.php not found.');
+    $file->process();
   }
 
   /**

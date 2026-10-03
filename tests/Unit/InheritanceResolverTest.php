@@ -302,6 +302,107 @@ class InheritanceResolverTest extends UnitTestCase {
   }
 
   /**
+   * Test resolving ancestors in Drupal extension namespaces.
+   *
+   * @param array<string, string> $paths
+   *   Source file paths keyed by class name, relative to the fixtures.
+   * @param string|null $drupal_root
+   *   The Drupal root relative to the fixtures, or NULL.
+   * @param string $code
+   *   PHP code to test.
+   * @param string $function_name
+   *   Name of the method to check.
+   * @param array<int, string>|null $expected
+   *   Expected parameter names.
+   */
+  #[DataProvider('dataProviderDrupalRoot')]
+  public function testDrupalRoot(array $paths, ?string $drupal_root, string $code, string $function_name, ?array $expected): void {
+    $fixtures = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Fixtures' . DIRECTORY_SEPARATOR;
+    $resolver = new InheritanceResolver(static fn(string $class_name): ?string => isset($paths[$class_name]) ? $fixtures . $paths[$class_name] : NULL, $drupal_root === NULL ? NULL : $fixtures . $drupal_root);
+    $file = $this->processCode($code);
+
+    $this->assertSame($expected, $resolver->getInheritedParameterNames($file, $this->findFunctionTokenByName($file, $function_name)));
+  }
+
+  /**
+   * Data provider for testDrupalRoot.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderDrupalRoot(): array {
+    $field = '<?php namespace Drupal\my_module; use Drupal\views\Plugin\views\field\FieldPluginBase; class Test extends FieldPluginBase { ';
+    $test = '<?php namespace Drupal\Tests\my_module\Kernel; use Drupal\Tests\views\Kernel\ViewsKernelTestBase; abstract class Test extends ViewsKernelTestBase { ';
+    $override = '<?php namespace Drupal\my_module; use Drupal\override\Overridden; class Test extends Overridden { public function run($param) {} }';
+
+    return [
+      'module_class_method' => [
+        [],
+        'Drupal',
+        $field . 'public function render($resultRow) {} }',
+        'render',
+        ['$values'],
+      ],
+      'module_class_own_method' => [
+        [],
+        'Drupal',
+        $field . 'public function formatLabel($labelText) {} }',
+        'formatLabel',
+        [],
+      ],
+      'module_class_without_drupal_root' => [
+        [],
+        NULL,
+        $field . 'public function formatLabel($labelText) {} }',
+        'formatLabel',
+        NULL,
+      ],
+      'module_test_class_method' => [
+        [],
+        'Drupal',
+        $test . 'protected function setUp($importTestViews = TRUE): void {} }',
+        'setUp',
+        ['$import_test_views'],
+      ],
+      'module_test_class_method_with_unresolved_grandparent' => [
+        [],
+        'Drupal',
+        $test . 'protected function createTestNode(array $nodeValues): void {} }',
+        'createTestNode',
+        NULL,
+      ],
+      'contrib_module_interface' => [
+        [],
+        'Drupal',
+        '<?php namespace Drupal\my_module; use Drupal\token\TokenInterface; class Test implements TokenInterface { public function replace(string $text, array $tokenData = [], array $replaceOptions = []) {} }',
+        'replace',
+        ['$text', '$tokenData'],
+      ],
+      'site_module_over_contrib_module' => [
+        [],
+        'Drupal',
+        $override,
+        'run',
+        ['$siteParam'],
+      ],
+      'source_locator_before_drupal_root' => [
+        ['Drupal\override\Overridden' => 'Drupal/modules/contrib/override/src/Overridden.php'],
+        'Drupal',
+        $override,
+        'run',
+        ['$contribParam'],
+      ],
+      'unknown_extension' => [
+        [],
+        'Drupal',
+        '<?php class Test extends \Drupal\unknown\Base { public function run($fooBar) {} }',
+        'run',
+        NULL,
+      ],
+    ];
+  }
+
+  /**
    * Test that a failing source locator leaves the ancestor unresolved.
    */
   public function testLocatorFailureLeavesAncestorUnresolved(): void {

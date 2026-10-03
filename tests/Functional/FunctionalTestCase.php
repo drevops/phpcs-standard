@@ -50,7 +50,7 @@ abstract class FunctionalTestCase extends TestCase {
   }
 
   /**
-   * Run phpcs against a file and return parsed JSON results.
+   * Run phpcs against a file and assert the violations of the sniff source.
    *
    * @param string $file_path
    *   The path to the file to check.
@@ -58,8 +58,31 @@ abstract class FunctionalTestCase extends TestCase {
    *   Array of violation structures that should be present.
    *   Each violation should contain keys like 'message', 'line', 'source', etc.
    *   Will match against actual violations in the JSON output.
+   * @param string $standard
+   *   The standard name or the path to a ruleset file.
    */
-  protected function runPhpcs(string $file_path, array $expected_violations = []): void {
+  protected function runPhpcs(string $file_path, array $expected_violations = [], string $standard = 'DrevOps'): void {
+    $violations = $this->runPhpcsJson($file_path, $standard);
+
+    // Normalize both arrays to remove fields that can change.
+    $normalized_expected = $this->normalizeViolations($expected_violations);
+    $normalized_actual = $this->normalizeViolations($violations);
+
+    $this->assertEquals($normalized_expected, $normalized_actual, 'Expected violations should be present in PHPCS output');
+  }
+
+  /**
+   * Run phpcs against a file and return the violations of the sniff source.
+   *
+   * @param string $file_path
+   *   The path to the file to check.
+   * @param string $standard
+   *   The standard name or the path to a ruleset file.
+   *
+   * @return array<int, array<string, mixed>>
+   *   Violations whose source contains the sniff source.
+   */
+  protected function runPhpcsJson(string $file_path, string $standard = 'DrevOps'): array {
     $phpcs_bin = __DIR__ . '/../../vendor/bin/phpcs';
     $this->assertFileExists($phpcs_bin, 'PHPCS binary must exist');
 
@@ -68,22 +91,17 @@ abstract class FunctionalTestCase extends TestCase {
     // Run phpcs using ProcessTrait.
     $this->processRun(
       $phpcs_bin,
-      ['--standard=DrevOps', '--report=json', '-q', $file_path],
+      ['--standard=' . $standard, '--report=json', '-q', $file_path],
       timeout: 120
     );
-
-    // @phpstan-ignore-next-line
-    $output = $this->process->getOutput() . $this->process->getErrorOutput();
-    $violations = $this->getPhpcsViolations($output);
 
     // Note: We don't assert on process exit code because we're filtering
     // violations by sniff. PHPCS may return non-zero due to violations from
     // other sniffs in the DrevOps standard.
-    // Normalize both arrays to remove fields that can change.
-    $normalized_expected = $this->normalizeViolations($expected_violations);
-    $normalized_actual = $this->normalizeViolations($violations);
+    // @phpstan-ignore-next-line
+    $output = $this->process->getOutput() . $this->process->getErrorOutput();
 
-    $this->assertEquals($normalized_expected, $normalized_actual, 'Expected violations should be present in PHPCS output');
+    return $this->getPhpcsViolations($output);
   }
 
   /**

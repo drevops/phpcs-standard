@@ -11,6 +11,7 @@ This is a PHP_CodeSniffer (PHPCS) standard package (`drevops/phpcs-standard`) th
 - Support configurable formats: snakeCase (default) or camelCase
 - Exclude class properties from naming enforcement (properties follow different conventions)
 - Preserve parameter names that an ancestor class, interface or trait declares for the same method
+- Resolve ancestors in Drupal extension namespaces, which Drupal registers at runtime rather than through Composer
 - Provide auto-fixing support via `phpcbf`
 - Provide a standalone, reusable PHPCS standard for the DrevOps ecosystem
 
@@ -89,6 +90,8 @@ composer normalize --dry-run
   - `Helpers/` - Non-sniff classes (outside `Sniffs/`, so PHPCS does not register them)
     - `ClassLikeDeclaration.php` - Value object: a class-like's name, ancestors and non-private method parameter names
     - `ClassLikeParser.php` - Reads class-like declarations, namespaces and imports from a token stream
+    - `DrupalNamespaceMap.php` - Maps Drupal extension namespaces to their `src` and `tests/src` directories
+    - `DrupalRootResolver.php` - Resolves the Drupal root from the `drupalRoot` property or the `drupal/core` install path
     - `InheritanceResolver.php` - Finds the parameter names that ancestors declare for a method
   - `Sniffs/NamingConventions/`
     - `AbstractVariableNamingSniff.php` - Base class with shared functionality
@@ -101,6 +104,8 @@ composer normalize --dry-run
     - `LocalVariableNamingSniffTest.php` - Tests local variable sniff
     - `ParameterNamingSniffTest.php` - Tests parameter sniff
     - `ClassLikeParserTest.php` - Tests declaration parsing and class name resolution
+    - `DrupalNamespaceMapTest.php` - Tests extension discovery and class file lookup
+    - `DrupalRootResolverTest.php` - Tests root detection and the `drupalRoot` values
     - `InheritanceResolverTest.php` - Tests ancestor lookup and inherited parameter names
     - `UnitTestCase.php` - Base test class with helper methods
   - `Functional/` - Integration tests that run actual phpcs commands
@@ -116,8 +121,9 @@ The standard uses an **abstract base class pattern** with two concrete implement
 
 Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php) containing shared functionality:
 
-**Public property:**
+**Public properties:**
 - `$format` - Configurable naming convention ('snakeCase' or 'camelCase', default: 'snakeCase')
+- `$drupalRoot` - Drupal root for resolving ancestors in Drupal extension namespaces (unset: detected from `drupal/core`; a path: replaces the detected root, relative to the working directory; `FALSE`: off). Only ParameterNaming looks ancestors up, so LocalVariableNaming ignores it
 
 **Core methods:**
 - `register()` - Registers T_VARIABLE token for processing
@@ -138,16 +144,32 @@ Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php
 - `isPromotedProperty()` - Detects promoted constructor properties
 - `isParameter()` - Checks if variable is a parameter (signature only, or with uses in bodies resolved through `findDeclaringFunction()`)
 - `isProperty()` - Distinguishes class properties from local variables
-- `isInheritedParameter()` - Detects parameters whose name an ancestor declares for the same method (delegates to `InheritanceResolver`)
+- `isInheritedParameter()` - Detects parameters whose name an ancestor declares for the same method (delegates to `InheritanceResolver`, created once with the root that `DrupalRootResolver` resolves from `$drupalRoot`)
 
 #### InheritanceResolver
 
 Resolves the ancestors of the method's class-like (extended class, implemented or extended interfaces, used traits, transitively) and returns the parameter names they declare for the method:
-- Lookup order: the file being checked, classes already loaded in the PHPCS process (`ReflectionClass`, autoloading disabled), then source files located by Composer's registered class loaders (`findFile()`) and tokenized with the PHPCS tokenizer. Project code is never included or executed.
+- Lookup order: the file being checked, classes already loaded in the PHPCS process (`ReflectionClass`, autoloading disabled), source files located by Composer's registered class loaders (`findFile()`), then, when constructed with a Drupal root, source files located by `DrupalNamespaceMap`. Located files are tokenized with the PHPCS tokenizer; project code is never included or executed.
 - Returns `[]` when no ancestor declares the method, the declared names when one does, and `NULL` when no resolved ancestor declares it and an ancestor is unresolved (the sniff then skips every parameter of the method).
 - Private methods, closures, arrow functions and global functions are never inherited.
 - Caches lookups per class name, parsed source files per path, and the current file's declarations per token stream (path, object id, fixer loop, token count).
 - Names are built from token content, so PHPCS 3 (`T_STRING` + `T_NS_SEPARATOR`) and PHPCS 4 (`T_NAME_*`) give the same result.
+
+#### DrupalRootResolver
+
+Turns the `drupalRoot` property into an absolute Drupal root or `NULL`:
+- `FALSE` turns discovery off. A non-blank string is a path, resolved with `realpath()` from the working directory; a path without `core/lib/Drupal.php` throws a `RuntimeException`, which PHPCS reports as `Internal.Exception` on the file (as for an invalid `format`).
+- Any other value (`NULL`, empty, `TRUE`) detects the root as the parent of the `drupal/core` install path from `Composer\InstalledVersions`, kept only when it holds `core/lib/Drupal.php`.
+- The `drupal/core` lookup is an injectable closure, so tests can point it at `tests/Fixtures/Drupal/core`.
+
+#### DrupalNamespaceMap
+
+Maps `Drupal\<extension>\` to `<extension>/src` and `Drupal\Tests\<extension>\` to `<extension>/tests/src`:
+- Scans `core/{modules,profiles,themes}`, `{modules,profiles,themes}` and `sites/*/{modules,profiles,themes}` recursively for `*.info.yml`, the same directories as Drupal's PHPUnit bootstrap. A later directory wins for a duplicate machine name (core < root < sites).
+- Skips hidden directories and the directories Drupal's extension discovery never enters (`src`, `vendor`, `node_modules`, `fixtures`, ...); scans `tests` for test modules and `config` for core's `config` module.
+- Follows symlinks, records real paths, and stops at directories already visited, so symlink cycles end.
+- Scans lazily on the first `Drupal\<extension>\<class>` lookup, once per instance; other namespaces return `NULL` without scanning.
+- Namespaces outside extensions (core's `Drupal\KernelTests\`, `Drupal\Tests\` in `core/tests`) are left to Composer.
 
 #### LocalVariableNamingSniff
 
@@ -191,7 +213,7 @@ Verify installation with: `vendor/bin/phpcs -i` (should list "DrevOps")
 
 This project uses **two complementary testing approaches**:
 
-#### 1. Unit Tests (462 tests, 513 assertions, 100% coverage)
+#### 1. Unit Tests (549 tests, 616 assertions, 100% coverage)
 
 Tests are organized by class hierarchy:
 
@@ -209,11 +231,15 @@ Tests are organized by class hierarchy:
 - Tests sniff-specific logic: error code constant, `register()`, and `process()` method
 - Configured to run only ParameterNaming sniff in isolation
 - Validates that parameters are checked and local variables are skipped
-- Includes tests for inherited parameter detection
+- Includes tests for inherited parameter detection, with `drupalRoot` set on the ruleset's sniff instance
 
 **ClassLikeParserTest.php** and **InheritanceResolverTest.php**
-- Cover namespaces, imports, name resolution, every class-like kind, same-file, reflected and Composer-located ancestors, unresolved ancestors, cycles and caching
-- `InheritanceResolver` accepts a source locator closure, so tests can point class names at fixture files
+- Cover namespaces, imports, name resolution, every class-like kind, same-file, reflected, Composer-located and Drupal-located ancestors, unresolved ancestors, cycles and caching
+- `InheritanceResolver` accepts a source locator closure, so tests can point class names at fixture files, and a Drupal root, so tests can point it at `tests/Fixtures/Drupal`
+
+**DrupalNamespaceMapTest.php** and **DrupalRootResolverTest.php**
+- `DrupalNamespaceMapTest` builds a Drupal root per data set in a `LocationsTrait` workspace, which also covers symlinked extensions, symlink cycles, unreadable directories (skipped when permissions are not enforced) and the single lazy scan
+- `DrupalRootResolverTest` switches the working directory to the project root, so relative `drupalRoot` paths resolve the same way everywhere
 
 **Key testing patterns:**
 - Use PHP reflection to test protected methods
@@ -233,6 +259,7 @@ Tests are organized by class hierarchy:
 - Run actual `phpcs` commands as external processes
 - Test complete PHPCS integration with JSON output parsing
 - Verify ParameterNaming sniff detection and error codes
+- Drupal discovery tests write a ruleset that sets `drupalRoot` on the standard and pass its path to `runPhpcs()`; `runPhpcsJson()` returns the violations for assertions that cannot match whole messages
 
 Tests include:
 - Confirms violations are detected with correct error codes
@@ -244,13 +271,15 @@ Tests include:
 - `tests/Fixtures/InheritedParameters.php` - Same-file ancestors: interfaces, abstract classes, renamed and extra parameters
 - `tests/Fixtures/InheritedParametersCrossFile.php` - Ancestors in other files, a PHPCS interface, internal classes, an enum, an anonymous class and an unresolved parent
 - `tests/Fixtures/Inheritance/` - One ancestor per file, autoloaded through the `autoload-dev` PSR-4 mapping so Composer can locate them
+- `tests/Fixtures/Drupal/` - A minimal Drupal root: a core module class and test class, a contrib interface, a module duplicated in `modules/contrib` and `sites/default/modules`, and the checked `my_module` file. Excluded from the `autoload-dev` classmap (`exclude-from-classmap`), so only `DrupalNamespaceMap` locates its classes, and from PHPStan
 - `tests/Fixtures/NestedFunctionParameters.php` - Closures, arrow functions and anonymous class methods: parameters, `use` imports, arrow function captures, shadowing and locals of nested functions
 - `tests/Fixtures/Valid.php` - Clean code for positive testing
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
+- No fixture file name ends in `Test.php`, as PHPUnit would load it as a test
 - `runPhpcbf()` fixes a copy that keeps the `.php` extension, because PHPCS 3 skips files without a known extension
 
 **Coverage:**
-- Line coverage: 100% (650/650 lines covered)
+- Line coverage: 100% (711/711 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools

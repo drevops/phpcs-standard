@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DrevOps\PhpcsStandard\Tests\Functional;
 
 use PHPUnit\Framework\Attributes\CoversNothing;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Group;
 
 /**
@@ -214,6 +215,76 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
         ],
       ]
     );
+  }
+
+  /**
+   * Test that classes of Drupal extensions are resolved as ancestors.
+   *
+   * The fixture extends a core module class, implements a contrib module
+   * interface and extends a core module test class. Only the Drupal namespace
+   * map locates them, as Composer does not autoload the fixture tree.
+   *
+   * @param string|null $drupal_root
+   *   The drupalRoot property value, or NULL to leave it unset.
+   * @param array<int, array<string, mixed>> $expected_violations
+   *   Expected violations.
+   */
+  #[DataProvider('dataProviderDrupalExtensionAncestors')]
+  public function testDrupalExtensionAncestors(?string $drupal_root, array $expected_violations): void {
+    $this->runPhpcs(static::$fixtures . DIRECTORY_SEPARATOR . 'Drupal/modules/custom/my_module/src/InheritedParameters.php', $expected_violations, $this->createRuleset($drupal_root));
+  }
+
+  /**
+   * Data provider for testDrupalExtensionAncestors.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderDrupalExtensionAncestors(): array {
+    $violation = static fn(string $name, string $suggestion): array => [
+      'message' => sprintf('Variable "$%s" is not in snakeCase format; try "$%s"', $name, $suggestion),
+      'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+      'fixable' => TRUE,
+    ];
+
+    $resolved = [
+      // Renamed parameter of a core module class method.
+      $violation('resultRow', 'result_row'),
+      // Method no ancestor declares.
+      $violation('labelText', 'label_text'),
+      // Parameter added to a contrib module interface method.
+      $violation('replaceOptions', 'replace_options'),
+      // Renamed parameter of a core module test class method.
+      $violation('importTestViews', 'import_test_views'),
+      // Class without ancestors.
+      $violation('rawValue', 'raw_value'),
+    ];
+
+    $unresolved = [
+      // Class without ancestors.
+      $violation('rawValue', 'raw_value'),
+    ];
+
+    return [
+      'absolute_path' => [dirname(__DIR__) . '/Fixtures/Drupal', $resolved],
+      'relative_path' => ['tests/Fixtures/Drupal', $resolved],
+      'false' => ['false', $unresolved],
+      'not_set_without_drupal_core' => [NULL, $unresolved],
+    ];
+  }
+
+  /**
+   * Test that a drupalRoot without Drupal core is reported as an error.
+   */
+  public function testInvalidDrupalRoot(): void {
+    $this->sniffSource = 'Internal.Exception';
+
+    $violations = $this->runPhpcsJson(static::$fixtures . DIRECTORY_SEPARATOR . 'Drupal/modules/custom/my_module/src/InheritedParameters.php', $this->createRuleset('tests/Fixtures'));
+
+    $this->assertCount(1, $violations);
+    $message = $violations[0]['message'] ?? NULL;
+    $this->assertIsString($message);
+    $this->assertStringContainsString('Invalid drupalRoot "tests/Fixtures": core/lib/Drupal.php not found.', $message);
   }
 
   /**
@@ -456,6 +527,24 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
 
     // Verify multiline descriptions are preserved.
     $this->assertStringContainsString('This is a parameter with a very long description', $fixed_content, 'Multiline descriptions should be preserved');
+  }
+
+  /**
+   * Create a ruleset that sets the drupalRoot property of the standard.
+   *
+   * @param string|null $drupal_root
+   *   The property value, or NULL to leave it unset.
+   *
+   * @return string
+   *   The ruleset path.
+   */
+  protected function createRuleset(?string $drupal_root): string {
+    $properties = $drupal_root === NULL ? '' : sprintf('<properties><property name="drupalRoot" value="%s"/></properties>', htmlspecialchars($drupal_root, ENT_XML1 | ENT_QUOTES));
+    $path = static::$tmp . DIRECTORY_SEPARATOR . 'phpcs.xml';
+
+    file_put_contents($path, sprintf('<?xml version="1.0"?><ruleset name="Test"><rule ref="DrevOps">%s</rule></ruleset>', $properties));
+
+    return $path;
   }
 
 }

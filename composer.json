@@ -53,6 +53,9 @@
         },
         "classmap": [
             "tests"
+        ],
+        "exclude-from-classmap": [
+            "tests/Fixtures/Drupal/"
         ]
     },
     "config": {

@@ -17,6 +17,9 @@ parameters:
     # The fixture extends a missing class on purpose, and PHPStan cannot ignore
     # errors about unknown parent classes.
     - tests/Fixtures/InheritedParametersCrossFile.php
+    # The Drupal fixture classes extend classes outside the fixture tree on
+    # purpose, and the duplicated module declares the same class twice.
+    - tests/Fixtures/Drupal
 
   ignoreErrors:
     -
