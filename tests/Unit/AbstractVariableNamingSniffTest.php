@@ -878,7 +878,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    *   Test cases.
    */
   public static function dataProviderIsInheritedParameterDrupalRoot(): array {
-    $drupal_root = dirname(__DIR__) . '/Fixtures/Drupal';
+    $drupal_root = __DIR__ . '/../Fixtures/Drupal';
 
     return [
       'absolute_root_upstream_parameter' => [$drupal_root, 'values', TRUE],

@@ -266,7 +266,7 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
     ];
 
     return [
-      'absolute_path' => [dirname(__DIR__) . '/Fixtures/Drupal', $resolved],
+      'absolute_path' => [__DIR__ . '/../Fixtures/Drupal', $resolved],
       'relative_path' => ['tests/Fixtures/Drupal', $resolved],
       'false' => ['false', $unresolved],
       'not_set_without_drupal_core' => [NULL, $unresolved],

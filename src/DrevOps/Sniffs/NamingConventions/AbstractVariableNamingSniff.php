@@ -42,7 +42,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    *
    * @var string|bool|null
    */
-  public $drupalRoot = NULL;
+  public $drupalRoot;
 
   /**
    * Reserved PHP variable names that should not be validated.

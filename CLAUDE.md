@@ -271,7 +271,7 @@ Tests include:
 - `tests/Fixtures/InheritedParameters.php` - Same-file ancestors: interfaces, abstract classes, renamed and extra parameters
 - `tests/Fixtures/InheritedParametersCrossFile.php` - Ancestors in other files, a PHPCS interface, internal classes, an enum, an anonymous class and an unresolved parent
 - `tests/Fixtures/Inheritance/` - One ancestor per file, autoloaded through the `autoload-dev` PSR-4 mapping so Composer can locate them
-- `tests/Fixtures/Drupal/` - A minimal Drupal root: a core module class and test class, a contrib interface, a module duplicated in `modules/contrib` and `sites/default/modules`, and the checked `my_module` file. Excluded from the `autoload-dev` classmap (`exclude-from-classmap`), so only `DrupalNamespaceMap` locates its classes, and from PHPStan
+- `tests/Fixtures/Drupal/` - A minimal Drupal root: a core module class and test class, a contrib interface, a module duplicated in `modules/contrib` and `sites/default/modules`, and the checked `my_module` file. Excluded from the `autoload-dev` classmap (`exclude-from-classmap`), so only `DrupalNamespaceMap` locates its classes, and from PHPStan analysis (still scanned, so tests can reference its classes with `::class`)
 - `tests/Fixtures/NestedFunctionParameters.php` - Closures, arrow functions and anonymous class methods: parameters, `use` imports, arrow function captures, shadowing and locals of nested functions
 - `tests/Fixtures/Valid.php` - Clean code for positive testing
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`

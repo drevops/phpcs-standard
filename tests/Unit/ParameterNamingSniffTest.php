@@ -174,7 +174,7 @@ class ParameterNamingSniffTest extends UnitTestCase {
    */
   public static function dataProviderProcessDrupalRoot(): array {
     return [
-      'drupal_root' => [dirname(__DIR__) . '/Fixtures/Drupal', 2],
+      'drupal_root' => [__DIR__ . '/../Fixtures/Drupal', 2],
       'false' => [FALSE, 0],
       'not_set' => [NULL, 0],
     ];

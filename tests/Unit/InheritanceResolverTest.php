@@ -8,6 +8,7 @@ use DrevOps\Helpers\ClassLikeDeclaration;
 use DrevOps\Helpers\InheritanceResolver;
 use DrevOps\PhpcsStandard\Tests\Fixtures\AbstractClassDefiningInheritedParam;
 use DrevOps\PhpcsStandard\Tests\Fixtures\InterfaceDefiningInheritedParams;
+use Drupal\override\Overridden;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 
@@ -386,7 +387,7 @@ class InheritanceResolverTest extends UnitTestCase {
         ['$siteParam'],
       ],
       'source_locator_before_drupal_root' => [
-        ['Drupal\override\Overridden' => 'Drupal/modules/contrib/override/src/Overridden.php'],
+        [Overridden::class => 'Drupal/modules/contrib/override/src/Overridden.php'],
         'Drupal',
         $override,
         'run',

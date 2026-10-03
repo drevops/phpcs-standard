@@ -77,14 +77,14 @@ class DrupalNamespaceMapTest extends TestCase {
         'core/modules/views/src/ViewExecutable.php',
       ],
       'core_module_nested_namespace' => [
-        [$views, 'core/modules/views/src/Plugin/views/field/FieldPluginBase.php'],
-        'Drupal\views\Plugin\views\field\FieldPluginBase',
-        'core/modules/views/src/Plugin/views/field/FieldPluginBase.php',
+        [$views, 'core/modules/views/src/Plugin/views/field/EntityField.php'],
+        'Drupal\views\Plugin\views\field\EntityField',
+        'core/modules/views/src/Plugin/views/field/EntityField.php',
       ],
       'core_module_test_class' => [
-        [$views, 'core/modules/views/tests/src/Kernel/ViewsKernelTestBase.php'],
-        'Drupal\Tests\views\Kernel\ViewsKernelTestBase',
-        'core/modules/views/tests/src/Kernel/ViewsKernelTestBase.php',
+        [$views, 'core/modules/views/tests/src/Kernel/Handler/FieldKernelTestBase.php'],
+        'Drupal\Tests\views\Kernel\Handler\FieldKernelTestBase',
+        'core/modules/views/tests/src/Kernel/Handler/FieldKernelTestBase.php',
       ],
       'core_module_test_module' => [
         [
@@ -246,8 +246,8 @@ class DrupalNamespaceMapTest extends TestCase {
         NULL,
       ],
       'test_class_outside_tests_directory' => [
-        [$views, 'core/modules/views/src/Kernel/ViewsKernelTestBase.php'],
-        'Drupal\Tests\views\Kernel\ViewsKernelTestBase',
+        [$views, 'core/modules/views/src/Kernel/Handler/FieldKernelTestBase.php'],
+        'Drupal\Tests\views\Kernel\Handler\FieldKernelTestBase',
         NULL,
       ],
       'extension_class_in_tests_directory' => [
