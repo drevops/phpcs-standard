@@ -279,16 +279,16 @@ abstract class AbstractVariableNamingSniff implements Sniff {
     $function_ptr = FALSE;
     $scope_ptr = 0;
 
-    foreach (array_reverse($tokens[$stack_ptr]['conditions'] ?? [], TRUE) as $condition_ptr => $condition_code) {
+    // Conditions run from the outermost scope inwards, so the last function
+    // or class-like wins.
+    foreach ($tokens[$stack_ptr]['conditions'] ?? [] as $condition_ptr => $condition_code) {
       if (in_array($condition_code, self::FUNCTION_TOKENS, TRUE)) {
         $function_ptr = $condition_ptr;
         $scope_ptr = $condition_ptr;
-        break;
       }
-
-      if (in_array($condition_code, ClassLikeParser::CLASS_LIKE_TOKENS, TRUE)) {
+      elseif (in_array($condition_code, ClassLikeParser::CLASS_LIKE_TOKENS, TRUE)) {
+        $function_ptr = FALSE;
         $scope_ptr = $condition_ptr;
-        break;
       }
     }
 
