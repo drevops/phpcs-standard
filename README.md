@@ -233,7 +233,7 @@ The Drupal root is detected through Composer, as the parent of the directory tha
 | A path | Replaces the detected root. A relative path resolves from the working directory. A path without `core/lib/Drupal.php` is reported as an error. |
 | `false` | No discovery. |
 
-Namespaces outside Drupal extensions aren't discovered. Core's own test base classes, such as `Drupal\KernelTests\KernelTestBase` and `Drupal\Tests\BrowserTestBase`, live in `core/tests`, so a method in a test class that no resolved ancestor declares still has all of its parameters skipped. Add those namespaces to your project's Composer autoload and run `composer dump-autoload`, and `ParameterNaming` finds them through Composer:
+Namespaces outside Drupal extensions aren't discovered. Core's own test base classes, such as `Drupal\KernelTests\KernelTestBase` and `Drupal\Tests\BrowserTestBase`, live in `core/tests`, so they can't be found either: a test class method that none of the found ancestors declares has all of its parameters skipped. Add those namespaces to your project's Composer autoload and run `composer dump-autoload`, so `ParameterNaming` finds them through Composer:
 
 ```json
 "autoload-dev": {
