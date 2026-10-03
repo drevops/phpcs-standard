@@ -137,7 +137,9 @@ final class DrupalNamespaceMap {
     $directories = [];
 
     foreach ($bases as $base) {
-      array_push($directories, $base . '/modules', $base . '/profiles', $base . '/themes');
+      $directories[] = $base . '/modules';
+      $directories[] = $base . '/profiles';
+      $directories[] = $base . '/themes';
     }
 
     return $directories;

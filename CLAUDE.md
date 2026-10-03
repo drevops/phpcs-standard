@@ -279,7 +279,7 @@ Tests include:
 - `runPhpcbf()` fixes a copy that keeps the `.php` extension, because PHPCS 3 skips files without a known extension
 
 **Coverage:**
-- Line coverage: 100% (711/711 lines covered)
+- Line coverage: 100% (713/713 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools

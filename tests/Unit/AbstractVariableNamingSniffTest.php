@@ -849,7 +849,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    * The class extends a Drupal module class that only the Drupal namespace
    * map locates.
    *
-   * @param mixed $drupal_root
+   * @param string|bool|null $drupal_root
    *   The drupalRoot property value.
    * @param string $variable_name
    *   Variable name to check.
@@ -857,7 +857,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    *   Expected result.
    */
   #[DataProvider('dataProviderIsInheritedParameterDrupalRoot')]
-  public function testIsInheritedParameterDrupalRoot(mixed $drupal_root, string $variable_name, bool $expected): void {
+  public function testIsInheritedParameterDrupalRoot(string|bool|null $drupal_root, string $variable_name, bool $expected): void {
     $file = $this->processCode('<?php namespace Drupal\my_module; use Drupal\views\Plugin\views\field\FieldPluginBase; class Test extends FieldPluginBase { public function render($values, $extraParam) {} public function formatLabel($labelText) {} }');
     $variable_ptr = $this->findVariableToken($file, $variable_name);
     $sniff = new ParameterNamingSniff();

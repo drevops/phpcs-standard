@@ -150,13 +150,13 @@ class ParameterNamingSniffTest extends UnitTestCase {
   /**
    * Test process method with the drupalRoot property.
    *
-   * @param mixed $drupal_root
+   * @param string|bool|null $drupal_root
    *   The drupalRoot property value.
    * @param int $expected_count
    *   Expected number of errors.
    */
   #[DataProvider('dataProviderProcessDrupalRoot')]
-  public function testProcessDrupalRoot(mixed $drupal_root, int $expected_count): void {
+  public function testProcessDrupalRoot(string|bool|null $drupal_root, int $expected_count): void {
     $sniff = $this->ruleset->sniffs[ParameterNamingSniff::class] ?? NULL;
     $this->assertInstanceOf(ParameterNamingSniff::class, $sniff);
     $sniff->drupalRoot = $drupal_root;
