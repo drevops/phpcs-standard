@@ -112,7 +112,7 @@ function processOrder() {
 ```
 
 Excludes:
-- Function/method parameters (handled by `ParameterNaming`)
+- Parameters, including their uses in closures that import them with `use` and in arrow functions (handled by `ParameterNaming`, see [Closures and arrow functions](#closures-and-arrow-functions))
 - Class properties (not enforced)
 - Reserved variables (`$this`, `$_GET`, `$_POST`, etc.)
 
@@ -130,7 +130,7 @@ $myVariable = 'value';
 
 ## `ParameterNaming`
 
-Enforces consistent naming convention for function/method parameters.
+Enforces consistent naming convention for parameters of functions, methods, closures and arrow functions.
 
 **With `snakeCase` (default):**
 ```php
@@ -147,6 +147,26 @@ function processOrder($order_id, $user_data) {  // ✗ Error: NotCamelCase
 Excludes:
 - Parameters whose name an ancestor declares for the same method (see [Inherited parameters](#inherited-parameters))
 - Class properties (including promoted constructor properties)
+
+### Closures and arrow functions
+
+Parameters of closures, arrow functions and anonymous class methods are checked on their signature, the same way as function parameters.
+
+Inside a nested function, a variable still refers to the parameter when that function takes it from the enclosing scope: a closure lists it in `use`, and an arrow function captures the enclosing scope automatically. `LocalVariableNaming` skips those uses, so you get 1 error per parameter, on its declaration. A closure without `use` starts with an empty scope, and so does an anonymous class method, so a variable there with the parameter's name is a new local that `LocalVariableNaming` checks.
+
+```php
+function applyDiscount(array $prices, float $discountRate) {  // ✗ Error: NotSnakeCase
+    $apply = fn($unitPrice) => $unitPrice * $discountRate;    // ✗ Error on $unitPrice only
+
+    $describe = function () use ($discountRate) {             // ✓ Skipped: imported parameter
+        return $discountRate * 100;
+    };
+
+    $forgotten = function () {
+        return $discountRate;                                 // ✗ Error: a local of this closure
+    };
+}
+```
 
 ### Inherited parameters
 

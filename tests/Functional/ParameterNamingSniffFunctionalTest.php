@@ -217,6 +217,190 @@ class ParameterNamingSniffFunctionalTest extends FunctionalTestCase {
   }
 
   /**
+   * Test that parameters of nested functions are flagged on the signature.
+   *
+   * Covers closures, arrow functions and anonymous class methods, including
+   * static, by-reference and nested ones and those passed as call arguments.
+   * Uses in bodies, 'use' clauses and arrow function captures are not flagged.
+   */
+  public function testNestedFunctionParameters(): void {
+    $this->runPhpcs(
+      static::$fixtures . DIRECTORY_SEPARATOR . 'NestedFunctionParameters.php',
+      [
+        // Closure.
+        [
+          'message' => 'Variable "$closureParam" is not in snakeCase format; try "$closure_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Arrow function.
+        [
+          'message' => 'Variable "$arrowParam" is not in snakeCase format; try "$arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Static closure and static arrow function.
+        [
+          'message' => 'Variable "$staticClosureParam" is not in snakeCase format; try "$static_closure_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$staticArrowParam" is not in snakeCase format; try "$static_arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // By-reference arrow function.
+        [
+          'message' => 'Variable "$referenceParam" is not in snakeCase format; try "$reference_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Closure and arrow function passed as call arguments.
+        [
+          'message' => 'Variable "$mapItem" is not in snakeCase format; try "$map_item"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$filterItem" is not in snakeCase format; try "$filter_item"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method parameters imported with 'use' or captured by an arrow
+        // function.
+        [
+          'message' => 'Variable "$importedParam" is not in snakeCase format; try "$imported_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$referenceImportedParam" is not in snakeCase format; try "$reference_imported_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$capturedParam" is not in snakeCase format; try "$captured_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Nested arrow functions.
+        [
+          'message' => 'Variable "$outerArrowParam" is not in snakeCase format; try "$outer_arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$middleArrowParam" is not in snakeCase format; try "$middle_arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$innerArrowParam" is not in snakeCase format; try "$inner_arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Closure inside an arrow function inside a method.
+        [
+          'message' => 'Variable "$mixedMethodParam" is not in snakeCase format; try "$mixed_method_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$mixedArrowParam" is not in snakeCase format; try "$mixed_arrow_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$mixedClosureParam" is not in snakeCase format; try "$mixed_closure_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$mixedInnerParam" is not in snakeCase format; try "$mixed_inner_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method parameter and the closure parameter shadowing it.
+        [
+          'message' => 'Variable "$shadowedParam" is not in snakeCase format; try "$shadowed_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$shadowedParam" is not in snakeCase format; try "$shadowed_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Match expression in an arrow function.
+        [
+          'message' => 'Variable "$matchSubject" is not in snakeCase format; try "$match_subject"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$matchDefault" is not in snakeCase format; try "$match_default"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method parameter a closure does not import.
+        [
+          'message' => 'Variable "$notImportedParam" is not in snakeCase format; try "$not_imported_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Function returning an anonymous class, and the class method.
+        [
+          'message' => 'Variable "$factoryParam" is not in snakeCase format; try "$factory_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$anonymousParam" is not in snakeCase format; try "$anonymous_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Plain function.
+        [
+          'message' => 'Variable "$plainParam" is not in snakeCase format; try "$plain_param"',
+          'source' => 'DrevOps.NamingConventions.ParameterNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+      ]
+    );
+  }
+
+  /**
+   * Test that phpcbf renames nested function parameters consistently.
+   *
+   * Runs both naming sniffs, as the signatures are renamed by ParameterNaming
+   * and the remaining uses by LocalVariableNaming on the next fixer loop.
+   */
+  public function testPhpcbfRenamesNestedFunctionParameters(): void {
+    $fixed = $this->runPhpcbf(
+      static::$fixtures . DIRECTORY_SEPARATOR . 'NestedFunctionParameters.php',
+      'DrevOps.NamingConventions.LocalVariableNaming,DrevOps.NamingConventions.ParameterNaming'
+    );
+
+    // Every variable in the fixture is fixable, so a remaining camelCase name
+    // is a use that was not renamed with its declaration.
+    $this->assertDoesNotMatchRegularExpression('/\$[a-z][a-z0-9]*[A-Z]/', $fixed);
+
+    $this->assertStringContainsString('return function ($closure_param) {', $fixed);
+    $this->assertStringContainsString('return $closure_param;', $fixed);
+    $this->assertStringContainsString('return fn($arrow_param) => $arrow_param * 2;', $fixed);
+    $this->assertStringContainsString('return fn&(array &$reference_param) => $reference_param;', $fixed);
+    $this->assertStringContainsString('public function methodWithUse($imported_param): \Closure {', $fixed);
+    $this->assertStringContainsString('return function () use ($imported_param) {', $fixed);
+    $this->assertStringContainsString('return $imported_param;', $fixed);
+    $this->assertStringContainsString('return fn($item_value) => $item_value . $captured_param;', $fixed);
+    $this->assertStringContainsString('fn($middle_arrow_param) => fn($inner_arrow_param) => $outer_arrow_param + $middle_arrow_param + $inner_arrow_param;', $fixed);
+    $this->assertStringContainsString('fn($mixed_arrow_param) => function ($mixed_closure_param) use ($mixed_arrow_param, $mixed_method_param) {', $fixed);
+    $this->assertStringContainsString('public function anonymousMethod($anonymous_param) {', $fixed);
+    $this->assertStringContainsString('return $anonymous_param;', $fixed);
+  }
+
+  /**
    * Test that properties are not flagged (only parameters).
    */
   public function testPropertiesAreNotFlagged(): void {

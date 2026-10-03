@@ -130,12 +130,13 @@ Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php
 - `toFormat()` - Converts variable name to the configured format
 
 **Helper methods:**
-- `getParameterNames()` - Extracts parameter names from function signature
-- `isInParameterList()` - Checks if variable is in parameter list
-- `findParameterListOwner()` - Finds the function whose parameter list contains a variable
-- `findEnclosingFunction()` - Finds the enclosing function/closure for a variable
+- `getParameterNames()` - Extracts parameter names from a function, closure or arrow function signature, or from a closure `use` clause (via `File::getMethodParameters()`; a `use` clause without parentheses yields no names instead of an exception)
+- `findParameterListOwner()` - Finds the function, closure or arrow function whose parameter list contains a variable (from `nested_parenthesis`; a closure body nested in the list, as a PHP 8.5 default value or attribute argument, does not count)
+- `findEnclosingFunction()` - Finds the innermost function, closure or arrow function whose body contains a token (innermost `conditions` entry, stopping at class-likes, then a backwards search for `T_FN`, which PHPCS never adds to `conditions`)
+- `findDeclaringFunction()` - Finds the function that declares a variable as a parameter, moving outwards only through closures that import it with `use` and through arrow functions
+- `capturesVariable()` - Checks if a closure (`use` clause) or an arrow function (always) takes a variable from the enclosing scope
 - `isPromotedProperty()` - Detects promoted constructor properties
-- `isParameter()` - Checks if variable is a function/method parameter (with flag for body usage)
+- `isParameter()` - Checks if variable is a parameter (signature only, or with uses in bodies resolved through `findDeclaringFunction()`)
 - `isProperty()` - Distinguishes class properties from local variables
 - `isInheritedParameter()` - Detects parameters whose name an ancestor declares for the same method (delegates to `InheritanceResolver`)
 
@@ -144,7 +145,7 @@ Base class (src/DrevOps/Sniffs/NamingConventions/AbstractVariableNamingSniff.php
 Resolves the ancestors of the method's class-like (extended class, implemented or extended interfaces, used traits, transitively) and returns the parameter names they declare for the method:
 - Lookup order: the file being checked, classes already loaded in the PHPCS process (`ReflectionClass`, autoloading disabled), then source files located by Composer's registered class loaders (`findFile()`) and tokenized with the PHPCS tokenizer. Project code is never included or executed.
 - Returns `[]` when no ancestor declares the method, the declared names when one does, and `NULL` when no resolved ancestor declares it and an ancestor is unresolved (the sniff then skips every parameter of the method).
-- Private methods, closures and global functions are never inherited.
+- Private methods, closures, arrow functions and global functions are never inherited.
 - Caches lookups per class name, parsed source files per path, and the current file's declarations per token stream (path, object id, fixer loop, token count).
 - Names are built from token content, so PHPCS 3 (`T_STRING` + `T_NS_SEPARATOR`) and PHPCS 4 (`T_NAME_*`) give the same result.
 
@@ -153,8 +154,8 @@ Resolves the ancestors of the method's class-like (extended class, implemented o
 Enforces configurable naming convention for **local variables** inside functions/methods.
 
 **What gets checked:**
-- ✅ Local variables inside function/method bodies
-- ❌ Function/method parameters (handled by ParameterNaming)
+- ✅ Local variables inside function/method bodies, including variables a closure uses without importing them
+- ❌ Parameters of functions, methods, closures and arrow functions, including uses imported with `use` or captured by arrow functions (handled by ParameterNaming)
 - ❌ Class properties (not enforced)
 - ❌ Reserved PHP variables ($this, superglobals, etc.)
 
@@ -167,7 +168,7 @@ Enforces configurable naming convention for **local variables** inside functions
 Enforces configurable naming convention for **function/method parameters**.
 
 **What gets checked:**
-- ✅ Function and method parameters (in signature only)
+- ✅ Parameters of functions, methods, closures, arrow functions and anonymous class methods (in signature only)
 - ❌ Local variables (handled by LocalVariableNaming)
 - ❌ Parameters whose name an ancestor class, interface or trait declares for the same method (renamed and extra parameters are checked; interface and abstract declarations are checked unless they redeclare an ancestor method)
 - ❌ Promoted constructor properties
@@ -190,13 +191,13 @@ Verify installation with: `vendor/bin/phpcs -i` (should list "DrevOps")
 
 This project uses **two complementary testing approaches**:
 
-#### 1. Unit Tests (330 tests, 388 assertions, 100% coverage)
+#### 1. Unit Tests (462 tests, 513 assertions, 100% coverage)
 
 Tests are organized by class hierarchy:
 
 **AbstractVariableNamingSniffTest.php**
 - Tests all shared base class methods using reflection
-- Tests: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`, `getParameterNames()`, `isProperty()`, `isPromotedProperty()`, `isInheritedParameter()`
+- Tests: `isSnakeCase()`, `toSnakeCase()`, `isReserved()`, `register()`, `getParameterNames()`, `findParameterListOwner()`, `findEnclosingFunction()`, `findDeclaringFunction()`, `capturesVariable()`, `isParameter()`, `isProperty()`, `isPromotedProperty()`, `isInheritedParameter()`
 - Each test uses concrete sniff instances (LocalVariableNamingSniff or ParameterNamingSniff) to access protected methods
 
 **LocalVariableNamingSniffTest.php**
@@ -217,7 +218,8 @@ Tests are organized by class hierarchy:
 **Key testing patterns:**
 - Use PHP reflection to test protected methods
 - Use `processCode()` helper to simulate PHPCS token processing
-- Use `findVariableToken()` (with an optional occurrence), `findFunctionToken()` and `findFunctionTokenByName()` helpers to locate tokens
+- Use `findVariableToken()` (with an optional occurrence), `findTokenByCode()` (with an optional occurrence), `findFunctionToken()` and `findFunctionTokenByName()` helpers to locate tokens
+- Lookups that return a token position are asserted with `assertFunctionLookup()`, which takes the expected token as a `[code, occurrence]` pair
 - Each concrete sniff test overrides `setUp()` to configure specific sniff isolation
 
 #### 2. Functional Tests
@@ -242,11 +244,13 @@ Tests include:
 - `tests/Fixtures/InheritedParameters.php` - Same-file ancestors: interfaces, abstract classes, renamed and extra parameters
 - `tests/Fixtures/InheritedParametersCrossFile.php` - Ancestors in other files, a PHPCS interface, internal classes, an enum, an anonymous class and an unresolved parent
 - `tests/Fixtures/Inheritance/` - One ancestor per file, autoloaded through the `autoload-dev` PSR-4 mapping so Composer can locate them
+- `tests/Fixtures/NestedFunctionParameters.php` - Closures, arrow functions and anonymous class methods: parameters, `use` imports, arrow function captures, shadowing and locals of nested functions
 - `tests/Fixtures/Valid.php` - Clean code for positive testing
 - Fixtures are excluded from linting in `phpcs.xml` and `rector.php`
+- `runPhpcbf()` fixes a copy that keeps the `.php` extension, because PHPCS 3 skips files without a known extension
 
 **Coverage:**
-- Line coverage: 100% (638/638 lines covered)
+- Line coverage: 100% (650/650 lines covered)
 - Reports: `.logs/.coverage-html/index.html` and `.logs/cobertura.xml`
 
 ### Code Quality Tools

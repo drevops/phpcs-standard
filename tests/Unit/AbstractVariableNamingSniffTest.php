@@ -157,21 +157,19 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    *   PHP code to test.
    * @param array<string> $expected_params
    *   Expected parameter names.
+   * @param int|string $function_code
+   *   The code of the token to read the names of; its first occurrence is used.
    */
-  #[DataProvider('providerGetParameterNames')]
-  public function testGetParameterNames(string $code, array $expected_params): void {
+  #[DataProvider('dataProviderGetParameterNames')]
+  public function testGetParameterNames(string $code, array $expected_params, int|string $function_code = T_FUNCTION): void {
     $file = $this->processCode($code);
-    $function_ptr = $this->findFunctionToken($file);
+    $function_ptr = $this->findTokenByCode($file, $function_code);
     $sniff = new LocalVariableNamingSniff();
     $reflection = new \ReflectionClass($sniff);
     $method = $reflection->getMethod('getParameterNames');
     $result = $method->invoke($sniff, $file, $function_ptr);
 
-    $this->assertIsArray($result);
-    $this->assertCount(count($expected_params), $result);
-    foreach ($expected_params as $param) {
-      $this->assertContains($param, $result);
-    }
+    $this->assertSame($expected_params, $result);
   }
 
   /**
@@ -180,20 +178,319 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    * @return array<string, array<mixed>>
    *   Test cases.
    */
-  public static function providerGetParameterNames(): array {
+  public static function dataProviderGetParameterNames(): array {
     return [
-      'no_parameters' => [
-        '<?php function test() {}',
-        [],
-      ],
-      'single_parameter' => [
-        '<?php function test($param) {}',
-        ['$param'],
-      ],
-      'multiple_parameters' => [
-        '<?php function test($param1, $param2, $param3) {}',
-        ['$param1', '$param2', '$param3'],
-      ],
+      'no_parameters' => ['<?php function test() {}', []],
+      'single_parameter' => ['<?php function test($param) {}', ['$param']],
+      'multiple_parameters' => ['<?php function test($param1, $param2, $param3) {}', ['$param1', '$param2', '$param3']],
+      'reference_and_variadic_parameters' => ['<?php function test(int &$first, string ...$rest) {}', ['$first', '$rest']],
+      'promoted_property' => ['<?php class Test { public function __construct(public $promoted, $plain) {} }', ['$promoted', '$plain']],
+      'closure' => ['<?php $closure = function ($first, $second) use ($outer) {};', ['$first', '$second'], T_CLOSURE],
+      'closure_use_clause' => ['<?php $closure = function ($first) use ($outer, &$total) {};', ['$outer', '$total'], T_USE],
+      'closure_use_clause_without_parentheses' => ['<?php $closure = function () use { return $outer; };', [], T_USE],
+      'arrow_function' => ['<?php $add = fn($first, $second) => $first + $second;', ['$first', '$second'], T_FN],
+      'closure_in_default_value' => ['<?php function test($callback = static function ($inner) { return $inner; }, $after = 1) {}', ['$callback', '$after']],
+    ];
+  }
+
+  /**
+   * Test findParameterListOwner method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param int $occurrence
+   *   Which occurrence of the variable to check, starting at 1.
+   * @param array{0: int|string, 1: int}|null $expected
+   *   The code and occurrence of the expected owner token, or NULL when the
+   *   variable is not in a parameter list.
+   */
+  #[DataProvider('dataProviderFindParameterListOwner')]
+  public function testFindParameterListOwner(string $code, string $variable_name, int $occurrence, ?array $expected): void {
+    $this->assertFunctionLookup('findParameterListOwner', $code, $variable_name, $occurrence, $expected);
+  }
+
+  /**
+   * Data provider for findParameterListOwner tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderFindParameterListOwner(): array {
+    $function = '<?php function test($parameter) { return strlen($parameter); }';
+    $closure = '<?php class Test { public function test() { $closure = function ($parameter) { return $parameter; }; } }';
+    $arrow_function = '<?php class Test { public function test() { $double = fn($parameter) => $parameter * 2; } }';
+    $nested_arrow_functions = '<?php $add = fn($first) => fn($second) => $first + $second;';
+    $anonymous_class = '<?php function factory() { return new class { public function run($parameter) {} }; }';
+    $call_argument = '<?php array_map(function ($item) { return strlen($item); }, []);';
+    $default_value = '<?php function test($callback = static function ($inner) { return $inner; }, $after = 1) {}';
+    $attribute = '<?php function test(#[Attr(static function ($inner) { return $inner; })] $attributed) {}';
+
+    return [
+      'function_parameter' => [$function, 'parameter', 1, [T_FUNCTION, 1]],
+      'call_argument' => [$function, 'parameter', 2, NULL],
+      'method_parameter' => ['<?php class Test { public function test($parameter) {} }', 'parameter', 1, [T_FUNCTION, 1]],
+      'control_structure_condition' => ['<?php function test($parameter) { if ($parameter) {} }', 'parameter', 2, NULL],
+      'closure_parameter' => [$closure, 'parameter', 1, [T_CLOSURE, 1]],
+      'closure_body' => [$closure, 'parameter', 2, NULL],
+      'closure_use_clause' => ['<?php function test($parameter) { return function () use ($parameter) {}; }', 'parameter', 2, NULL],
+      'arrow_function_parameter' => [$arrow_function, 'parameter', 1, [T_FN, 1]],
+      'arrow_function_body' => [$arrow_function, 'parameter', 2, NULL],
+      'reference_arrow_function_parameter' => ['<?php $get = fn&(array &$parameter) => $parameter;', 'parameter', 1, [T_FN, 1]],
+      'nested_arrow_function_parameter' => [$nested_arrow_functions, 'second', 1, [T_FN, 2]],
+      'anonymous_class_method_parameter' => [$anonymous_class, 'parameter', 1, [T_FUNCTION, 2]],
+      'anonymous_class_argument' => ['<?php function test($parameter) { return new class($parameter) {}; }', 'parameter', 2, NULL],
+      'closure_parameter_in_call_argument' => [$call_argument, 'item', 1, [T_CLOSURE, 1]],
+      'closure_body_in_call_argument' => [$call_argument, 'item', 2, NULL],
+      'global_variable' => ['<?php $variable = 1;', 'variable', 1, NULL],
+      'closure_parameter_in_default_value' => [$default_value, 'inner', 1, [T_CLOSURE, 1]],
+      'closure_body_in_default_value' => [$default_value, 'inner', 2, NULL],
+      'parameter_after_closure_in_default_value' => [$default_value, 'after', 1, [T_FUNCTION, 1]],
+      'closure_parameter_in_attribute' => [$attribute, 'inner', 1, [T_CLOSURE, 1]],
+      'closure_body_in_attribute' => [$attribute, 'inner', 2, NULL],
+      'parameter_after_closure_in_attribute' => [$attribute, 'attributed', 1, [T_FUNCTION, 1]],
+    ];
+  }
+
+  /**
+   * Test findEnclosingFunction method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param int $occurrence
+   *   Which occurrence of the variable to check, starting at 1.
+   * @param array{0: int|string, 1: int}|null $expected
+   *   The code and occurrence of the expected function token, or NULL when the
+   *   variable is outside function bodies.
+   */
+  #[DataProvider('dataProviderFindEnclosingFunction')]
+  public function testFindEnclosingFunction(string $code, string $variable_name, int $occurrence, ?array $expected): void {
+    $this->assertFunctionLookup('findEnclosingFunction', $code, $variable_name, $occurrence, $expected);
+  }
+
+  /**
+   * Data provider for findEnclosingFunction tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderFindEnclosingFunction(): array {
+    $method = '<?php class Test { public function test($parameter) { $variable = 1; } }';
+    $closure = '<?php class Test { public function test() { $closure = function ($parameter) { return $parameter; }; } }';
+    $arrow_function = '<?php function test() { $double = fn($parameter) => $parameter * 2; return $parameter; }';
+    $nested_arrow_functions = '<?php $add = fn($first) => fn($second) => $first + $second;';
+    $closure_in_arrow_function = '<?php $make = fn($outer) => function () use ($outer) { return $outer; };';
+    $anonymous_class = '<?php function factory() { return new class { public $property; public function run() { $variable = 1; } }; }';
+
+    return [
+      'global_variable' => ['<?php $variable = 1;', 'variable', 1, NULL],
+      'global_variable_after_function' => ['<?php function test($variable) {} $variable = 1;', 'variable', 2, NULL],
+      'function_parameter' => ['<?php function test($parameter) {}', 'parameter', 1, NULL],
+      'function_body' => ['<?php function test() { $variable = 1; }', 'variable', 1, [T_FUNCTION, 1]],
+      'method_parameter' => [$method, 'parameter', 1, NULL],
+      'method_body' => [$method, 'variable', 1, [T_FUNCTION, 1]],
+      'closure_parameter' => [$closure, 'parameter', 1, [T_FUNCTION, 1]],
+      'closure_body' => [$closure, 'parameter', 2, [T_CLOSURE, 1]],
+      'closure_use_clause' => ['<?php function test($parameter) { return function () use ($parameter) {}; }', 'parameter', 2, [T_FUNCTION, 1]],
+      'arrow_function_parameter' => [$arrow_function, 'parameter', 1, [T_FUNCTION, 1]],
+      'arrow_function_body' => [$arrow_function, 'parameter', 2, [T_FN, 1]],
+      'after_arrow_function' => [$arrow_function, 'parameter', 3, [T_FUNCTION, 1]],
+      'arrow_function_in_global_code' => ['<?php $double = fn($parameter) => $parameter * 2;', 'parameter', 2, [T_FN, 1]],
+      'arrow_function_parameter_in_arrow_function' => [$nested_arrow_functions, 'second', 1, [T_FN, 1]],
+      'nested_arrow_function_body' => [$nested_arrow_functions, 'first', 2, [T_FN, 2]],
+      'match_in_arrow_function' => ['<?php $pick = fn($key) => match ($key) { 1 => $key, default => NULL };', 'key', 3, [T_FN, 1]],
+      'closure_use_clause_in_arrow_function' => [$closure_in_arrow_function, 'outer', 2, [T_FN, 1]],
+      'closure_in_arrow_function' => [$closure_in_arrow_function, 'outer', 3, [T_CLOSURE, 1]],
+      'arrow_function_in_closure' => ['<?php $make = function ($outer) { return fn($inner) => $inner + $outer; };', 'outer', 2, [T_FN, 1]],
+      'anonymous_class_property' => [$anonymous_class, 'property', 1, NULL],
+      'anonymous_class_method_body' => [$anonymous_class, 'variable', 1, [T_FUNCTION, 2]],
+      'anonymous_class_property_in_arrow_function' => ['<?php $make = fn() => new class { public $property; };', 'property', 1, NULL],
+    ];
+  }
+
+  /**
+   * Test findDeclaringFunction method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param int $occurrence
+   *   Which occurrence of the variable to check, starting at 1.
+   * @param array{0: int|string, 1: int}|null $expected
+   *   The code and occurrence of the expected function token, or NULL when the
+   *   variable is not a parameter.
+   */
+  #[DataProvider('dataProviderFindDeclaringFunction')]
+  public function testFindDeclaringFunction(string $code, string $variable_name, int $occurrence, ?array $expected): void {
+    $this->assertFunctionLookup('findDeclaringFunction', $code, $variable_name, $occurrence, $expected);
+  }
+
+  /**
+   * Data provider for findDeclaringFunction tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderFindDeclaringFunction(): array {
+    $function = '<?php function test($parameter) { $local = $parameter; }';
+    $closure = '<?php class Test { public function test() { $closure = function ($parameter) { return $parameter; }; } }';
+    $arrow_function = '<?php class Test { public function test() { $double = fn($parameter) => $parameter * 2; } }';
+    $anonymous_class = '<?php function factory() { return new class { public function run($parameter) { return $parameter; } }; }';
+    $use = '<?php class Test { public function test($parameter) { return function () use ($parameter) { return $parameter; }; } }';
+    $reference_use = '<?php function test(array $parameter) { return function () use (&$parameter) { $parameter[] = 1; }; }';
+    $capture = '<?php class Test { public function test($parameter) { return fn($item_value) => $item_value . $parameter; } }';
+    $nested_arrow_functions = '<?php function test($parameter) { return fn($first) => fn($second) => $parameter + $first + $second; }';
+    $shadowed = '<?php class Test { public function test($parameter) { return function ($parameter) { return $parameter; }; } }';
+    $anonymous_class_outer_name = '<?php function factory($parameter) { return new class { public function run() { return $parameter; } }; }';
+
+    return [
+      'function_parameter' => [$function, 'parameter', 1, [T_FUNCTION, 1]],
+      'function_body' => [$function, 'parameter', 2, [T_FUNCTION, 1]],
+      'function_local' => [$function, 'local', 1, NULL],
+      'global_variable' => ['<?php $variable = 1;', 'variable', 1, NULL],
+      'global_variable_named_like_earlier_parameter' => ['<?php function test($variable) {} $variable = 1;', 'variable', 2, NULL],
+      'closure_body' => [$closure, 'parameter', 2, [T_CLOSURE, 1]],
+      'arrow_function_body' => [$arrow_function, 'parameter', 2, [T_FN, 1]],
+      'anonymous_class_method_body' => [$anonymous_class, 'parameter', 2, [T_FUNCTION, 2]],
+      'use_clause' => [$use, 'parameter', 2, [T_FUNCTION, 1]],
+      'imported_with_use' => [$use, 'parameter', 3, [T_FUNCTION, 1]],
+      'imported_by_reference' => [$reference_use, 'parameter', 3, [T_FUNCTION, 1]],
+      'not_imported_by_closure' => ['<?php function test($parameter) { return function () { return $parameter; }; }', 'parameter', 2, NULL],
+      'captured_by_arrow_function' => [$capture, 'parameter', 2, [T_FUNCTION, 1]],
+      'arrow_function_local' => ['<?php function test() { return fn() => $local = 1; }', 'local', 1, NULL],
+      'arrow_function_in_global_code' => ['<?php $double = fn($value) => $value * $factor;', 'factor', 1, NULL],
+      'captured_across_nested_arrow_functions' => [$nested_arrow_functions, 'parameter', 2, [T_FUNCTION, 1]],
+      'captured_from_outer_arrow_function' => [$nested_arrow_functions, 'first', 2, [T_FN, 1]],
+      'closure_in_arrow_function' => ['<?php $make = fn($outer) => function () use ($outer) { return $outer; };', 'outer', 3, [T_FN, 1]],
+      'arrow_function_in_closure' => ['<?php $make = function ($outer) { return fn($inner) => $inner + $outer; };', 'outer', 2, [T_CLOSURE, 1]],
+      'closure_parameter_shadows_method_parameter' => [$shadowed, 'parameter', 3, [T_CLOSURE, 1]],
+      'anonymous_class_method_does_not_capture' => [$anonymous_class_outer_name, 'parameter', 2, NULL],
+      'nested_function_does_not_capture' => ['<?php function outer($parameter) { function inner() { return $parameter; } }', 'parameter', 2, NULL],
+    ];
+  }
+
+  /**
+   * Test capturesVariable method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param int|string $function_code
+   *   The code of the function token to check; its first occurrence is used.
+   * @param string $variable_name
+   *   Variable name to check, including the leading '$'.
+   * @param bool $expected
+   *   Expected result.
+   */
+  #[DataProvider('dataProviderCapturesVariable')]
+  public function testCapturesVariable(string $code, int|string $function_code, string $variable_name, bool $expected): void {
+    $file = $this->processCode($code);
+    $function_ptr = $this->findTokenByCode($file, $function_code);
+    $sniff = new LocalVariableNamingSniff();
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('capturesVariable');
+    $result = $method->invoke($sniff, $file, $function_ptr, $variable_name);
+
+    $this->assertSame($expected, $result);
+  }
+
+  /**
+   * Data provider for capturesVariable tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderCapturesVariable(): array {
+    $use = '<?php $closure = function () use ($factor) {};';
+
+    return [
+      'arrow_function' => ['<?php $double = fn($value) => $value * $factor;', T_FN, '$factor', TRUE],
+      'closure_use_clause' => [$use, T_CLOSURE, '$factor', TRUE],
+      'closure_use_clause_other_variable' => [$use, T_CLOSURE, '$other', FALSE],
+      'closure_use_clause_by_reference' => ['<?php $closure = function () use (&$total) {};', T_CLOSURE, '$total', TRUE],
+      'closure_use_clause_with_return_type' => ['<?php $closure = function ($value) use ($factor): int { return 1; };', T_CLOSURE, '$factor', TRUE],
+      'closure_use_clause_after_comment' => ['<?php $closure = function () /* Imports. */ use ($factor) {};', T_CLOSURE, '$factor', TRUE],
+      'closure_use_clause_without_parentheses' => ['<?php $closure = function () use { return $factor; };', T_CLOSURE, '$factor', FALSE],
+      'closure_parameter' => ['<?php $closure = function ($factor) {};', T_CLOSURE, '$factor', FALSE],
+      'closure_with_nested_use_clause' => ['<?php $closure = function () { return function () use ($factor) {}; };', T_CLOSURE, '$factor', FALSE],
+      'function' => ['<?php function test() { return $factor; }', T_FUNCTION, '$factor', FALSE],
+    ];
+  }
+
+  /**
+   * Test isParameter method.
+   *
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param int $occurrence
+   *   Which occurrence of the variable to check, starting at 1.
+   * @param bool $include_usage_in_body
+   *   Whether uses in a body count.
+   * @param bool $expected
+   *   Expected result.
+   */
+  #[DataProvider('dataProviderIsParameter')]
+  public function testIsParameter(string $code, string $variable_name, int $occurrence, bool $include_usage_in_body, bool $expected): void {
+    $file = $this->processCode($code);
+    $variable_ptr = $this->findVariableToken($file, $variable_name, $occurrence);
+    $sniff = new LocalVariableNamingSniff();
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('isParameter');
+    $result = $method->invoke($sniff, $file, $variable_ptr, $include_usage_in_body);
+
+    $this->assertSame($expected, $result);
+  }
+
+  /**
+   * Data provider for isParameter tests.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderIsParameter(): array {
+    $function = '<?php function test($parameter) { $local = $parameter; }';
+    $promoted = '<?php class Test { public function __construct(public $parameter) {} }';
+    $closure = '<?php class Test { public function test(): void { $closure = function ($parameter) { return $parameter; }; } }';
+    $arrow_function = '<?php class Test { public function test(): void { $double = fn($parameter) => $parameter * 2; } }';
+    $anonymous_class = '<?php function factory() { return new class { public function run($parameter) { return $parameter; } }; }';
+    $use = '<?php class Test { public function test($parameter) { return function () use ($parameter) { return $parameter; }; } }';
+    $capture = '<?php class Test { public function test($parameter) { return fn($item_value) => $item_value . $parameter; } }';
+    $not_imported = '<?php class Test { public function test($parameter) { return function () { return $parameter; }; } }';
+    $anonymous_class_outer_name = '<?php function factory($parameter) { return new class { public function run() { return $parameter; } }; }';
+    $global = '<?php function test($parameter) {} $parameter = 1;';
+
+    return [
+      'function_signature' => [$function, 'parameter', 1, FALSE, TRUE],
+      'function_signature_with_body' => [$function, 'parameter', 1, TRUE, TRUE],
+      'function_body' => [$function, 'parameter', 2, FALSE, FALSE],
+      'function_body_with_body' => [$function, 'parameter', 2, TRUE, TRUE],
+      'function_local' => [$function, 'local', 1, FALSE, FALSE],
+      'function_local_with_body' => [$function, 'local', 1, TRUE, FALSE],
+      'promoted_property' => [$promoted, 'parameter', 1, FALSE, FALSE],
+      'promoted_property_with_body' => [$promoted, 'parameter', 1, TRUE, FALSE],
+      'closure_signature' => [$closure, 'parameter', 1, FALSE, TRUE],
+      'closure_body' => [$closure, 'parameter', 2, FALSE, FALSE],
+      'closure_body_with_body' => [$closure, 'parameter', 2, TRUE, TRUE],
+      'arrow_function_signature' => [$arrow_function, 'parameter', 1, FALSE, TRUE],
+      'arrow_function_signature_with_body' => [$arrow_function, 'parameter', 1, TRUE, TRUE],
+      'arrow_function_body' => [$arrow_function, 'parameter', 2, FALSE, FALSE],
+      'arrow_function_body_with_body' => [$arrow_function, 'parameter', 2, TRUE, TRUE],
+      'anonymous_class_method_signature' => [$anonymous_class, 'parameter', 1, FALSE, TRUE],
+      'anonymous_class_method_body_with_body' => [$anonymous_class, 'parameter', 2, TRUE, TRUE],
+      'use_clause' => [$use, 'parameter', 2, FALSE, FALSE],
+      'use_clause_with_body' => [$use, 'parameter', 2, TRUE, TRUE],
+      'imported_with_use' => [$use, 'parameter', 3, FALSE, FALSE],
+      'imported_with_use_with_body' => [$use, 'parameter', 3, TRUE, TRUE],
+      'captured_by_arrow_function' => [$capture, 'parameter', 2, FALSE, FALSE],
+      'captured_by_arrow_function_with_body' => [$capture, 'parameter', 2, TRUE, TRUE],
+      'not_imported_by_closure_with_body' => [$not_imported, 'parameter', 2, TRUE, FALSE],
+      'anonymous_class_method_outer_name_with_body' => [$anonymous_class_outer_name, 'parameter', 2, TRUE, FALSE],
+      'global_variable_named_like_earlier_parameter_with_body' => [$global, 'parameter', 2, TRUE, FALSE],
     ];
   }
 
@@ -373,7 +670,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    * @param int $occurrence
    *   Which occurrence of the variable to check, starting at 1.
    */
-  #[DataProvider('providerIsInheritedParameter')]
+  #[DataProvider('dataProviderIsInheritedParameter')]
   public function testIsInheritedParameter(string $code, string $variable_name, bool $expected, int $occurrence = 1): void {
     $file = $this->processCode($code);
     $variable_ptr = $this->findVariableToken($file, $variable_name, $occurrence);
@@ -393,7 +690,7 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
    * @return array<string, array<mixed>>
    *   Test cases.
    */
-  public static function providerIsInheritedParameter(): array {
+  public static function dataProviderIsInheritedParameter(): array {
     return [
       'standalone_function' => [
         '<?php function test($parameter) {}',
@@ -513,6 +810,35 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
         'renamed',
         FALSE,
         2,
+      ],
+      'extending_class_param_imported_into_closure' => [
+        '<?php class Test extends BaseClass { public function test($parameter) { return function () use ($parameter) { return $parameter; }; } }',
+        'parameter',
+        TRUE,
+        3,
+      ],
+      'extending_class_param_captured_by_arrow_function' => [
+        '<?php class Test extends BaseClass { public function test($parameter) { return fn() => $parameter; } }',
+        'parameter',
+        TRUE,
+        2,
+      ],
+      'extending_class_param_not_imported_into_closure' => [
+        '<?php class Test extends BaseClass { public function test($parameter) { return function () { return $parameter; }; } }',
+        'parameter',
+        FALSE,
+        2,
+      ],
+      'extending_class_closure_param_shadowing_method_param' => [
+        '<?php class Test extends BaseClass { public function test($parameter) { return function ($parameter) { return $parameter; }; } }',
+        'parameter',
+        FALSE,
+        3,
+      ],
+      'extending_class_arrow_function_param' => [
+        '<?php class Test extends BaseClass { public function test() { return fn($parameter) => $parameter; } }',
+        'parameter',
+        FALSE,
       ],
     ];
   }
@@ -798,6 +1124,33 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
       'trailing_underscore' => ['value_', FALSE],
       'single_letter' => ['a', FALSE],
     ];
+  }
+
+  /**
+   * Asserts the function token that a lookup method returns for a variable.
+   *
+   * @param string $method_name
+   *   The lookup method to call.
+   * @param string $code
+   *   PHP code to test.
+   * @param string $variable_name
+   *   Variable name to look up.
+   * @param int $occurrence
+   *   Which occurrence of the variable to look up, starting at 1.
+   * @param array{0: int|string, 1: int}|null $expected
+   *   The code and occurrence of the expected function token, or NULL when the
+   *   lookup is expected to return FALSE.
+   */
+  protected function assertFunctionLookup(string $method_name, string $code, string $variable_name, int $occurrence, ?array $expected): void {
+    $file = $this->processCode($code);
+    $variable_ptr = $this->findVariableToken($file, $variable_name, $occurrence);
+    $expected_ptr = $expected === NULL ? FALSE : $this->findTokenByCode($file, $expected[0], $expected[1]);
+    $sniff = new LocalVariableNamingSniff();
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod($method_name);
+    $result = $method->invoke($sniff, $file, $variable_ptr);
+
+    $this->assertSame($expected_ptr, $result);
   }
 
 }

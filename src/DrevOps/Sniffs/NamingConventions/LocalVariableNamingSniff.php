@@ -10,8 +10,9 @@ use PHP_CodeSniffer\Files\File;
  * Enforces consistent naming convention for local variables.
  *
  * This sniff checks that local variables use the configured naming format
- * (snakeCase or camelCase). Function/method parameters and class properties
- * are excluded.
+ * (snakeCase or camelCase). Parameters of functions, methods, closures and
+ * arrow functions are excluded, including their uses in closures that import
+ * them with 'use' and in arrow functions. Class properties are excluded.
  */
 final class LocalVariableNamingSniff extends AbstractVariableNamingSniff {
 

@@ -51,11 +51,6 @@ class LocalVariableNamingSniffFunctionalTest extends FunctionalTestCase {
           'fixable' => TRUE,
         ],
         [
-          'message' => 'Variable "$invalidParam" is not in snakeCase format; try "$invalid_param"',
-          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
-          'fixable' => TRUE,
-        ],
-        [
           'message' => 'Variable "$localVar" is not in snakeCase format; try "$local_var"',
           'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
           'fixable' => TRUE,
@@ -207,31 +202,94 @@ class LocalVariableNamingSniffFunctionalTest extends FunctionalTestCase {
       'DrevOps.NamingConventions.LocalVariableNaming'
     );
 
-    // Check if phpcbf actually applied fixes by looking for a specific
-    // fixed comment+variable pair. PHPCS 3 does not support auto-fixing
-    // for this sniff, so skip fix-specific assertions when fixes are absent.
-    $fixes_applied = str_contains($fixed, '$first_handler');
+    // Doc comments should be fixed.
+    $this->assertStringContainsString('@var \SomeClass $module_handler */', $fixed);
+    $this->assertStringContainsString('@var \Drupal\Core\Extension\ModuleHandler $module_handler */', $fixed);
+    $this->assertStringContainsString('@var \Very\Long\Namespace\Path\To\SomeClass $module_handler */', $fixed);
 
-    if ($fixes_applied) {
-      // Doc comments should be fixed.
-      $this->assertStringContainsString('@var \SomeClass $module_handler */', $fixed);
-      $this->assertStringContainsString('@var \Drupal\Core\Extension\ModuleHandler $module_handler */', $fixed);
-      $this->assertStringContainsString('@var \Very\Long\Namespace\Path\To\SomeClass $module_handler */', $fixed);
+    // Multi-line doc comment should be fixed.
+    $this->assertStringContainsString('@var \Drupal\Core\Extension\ModuleHandler $module_handler', $fixed);
 
-      // Multi-line doc comment should be fixed.
-      $this->assertStringContainsString('@var \Drupal\Core\Extension\ModuleHandler $module_handler', $fixed);
+    // Mixed: doc comment var should be fixed.
+    $this->assertStringContainsString('@var \SomeClass $first_handler */', $fixed);
 
-      // Mixed: doc comment var should be fixed.
-      $this->assertStringContainsString('@var \SomeClass $first_handler */', $fixed);
-    }
-
-    // These assertions apply regardless of PHPCS version — these comments
-    // should never be modified even when fixes are applied.
+    // These comments should never be modified.
     $this->assertStringContainsString('// $moduleHandler holds the module handler.', $fixed);
     $this->assertStringContainsString('/* $moduleHandler holds the module handler. */', $fixed);
     $this->assertStringContainsString('// $secondHandler holds the second handler.', $fixed);
     $this->assertStringContainsString('@var \SomeClass $moduleHandler See also $otherService */', $fixed);
     $this->assertStringContainsString('// $moduleHandler trailing.', $fixed);
+  }
+
+  /**
+   * Test that parameters of nested functions are not flagged.
+   *
+   * Covers parameters of closures, arrow functions and anonymous class methods
+   * used in their bodies, parameters imported with 'use' or captured by arrow
+   * functions, and locals declared inside nested functions.
+   */
+  public function testNestedFunctionParametersAreNotFlagged(): void {
+    $this->runPhpcs(
+      static::$fixtures . DIRECTORY_SEPARATOR . 'NestedFunctionParameters.php',
+      [
+        // Local of the method and its 'use' entry.
+        [
+          'message' => 'Variable "$outerLocal" is not in snakeCase format; try "$outer_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$outerLocal" is not in snakeCase format; try "$outer_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Local of the closure, assigned from the imported method local.
+        [
+          'message' => 'Variable "$closureLocal" is not in snakeCase format; try "$closure_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$outerLocal" is not in snakeCase format; try "$outer_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$closureLocal" is not in snakeCase format; try "$closure_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Method parameter the closure does not import.
+        [
+          'message' => 'Variable "$notImportedParam" is not in snakeCase format; try "$not_imported_param"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Local of the arrow function and the method local it captures.
+        [
+          'message' => 'Variable "$arrowLocal" is not in snakeCase format; try "$arrow_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        [
+          'message' => 'Variable "$outerLocal" is not in snakeCase format; try "$outer_local"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Enclosing function parameter used in an anonymous class method.
+        [
+          'message' => 'Variable "$factoryParam" is not in snakeCase format; try "$factory_param"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+        // Global variable named like an earlier function parameter.
+        [
+          'message' => 'Variable "$plainParam" is not in snakeCase format; try "$plain_param"',
+          'source' => 'DrevOps.NamingConventions.LocalVariableNaming.NotSnakeCase',
+          'fixable' => TRUE,
+        ],
+      ]
+    );
   }
 
   /**

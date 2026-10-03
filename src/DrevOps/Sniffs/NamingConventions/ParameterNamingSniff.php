@@ -9,10 +9,11 @@ use PHP_CodeSniffer\Files\File;
 /**
  * Enforces consistent naming convention for function/method parameters.
  *
- * This sniff checks that function and method parameters use the configured
- * naming format (snakeCase or camelCase). Local variables and class properties
- * are excluded. A parameter is also excluded when an ancestor class, interface
- * or trait declares the same method with a parameter of the same name.
+ * This sniff checks that parameters of functions, methods, closures and arrow
+ * functions use the configured naming format (snakeCase or camelCase). Local
+ * variables and class properties are excluded. A parameter is also excluded
+ * when an ancestor class, interface or trait declares the same method with a
+ * parameter of the same name.
  */
 final class ParameterNamingSniff extends AbstractVariableNamingSniff {
 
@@ -142,8 +143,7 @@ final class ParameterNamingSniff extends AbstractVariableNamingSniff {
   private function fixDocblockParam(File $phpcs_file, int $stack_ptr, string $old_name, string $new_name): void {
     $tokens = $phpcs_file->getTokens();
 
-    // Find the enclosing function.
-    $function_ptr = $this->findEnclosingFunction($phpcs_file, $stack_ptr);
+    $function_ptr = $this->findParameterListOwner($phpcs_file, $stack_ptr);
     if ($function_ptr === FALSE) {
       return;
     }

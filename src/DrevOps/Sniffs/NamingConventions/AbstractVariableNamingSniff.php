@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace DrevOps\Sniffs\NamingConventions;
 
+use DrevOps\Helpers\ClassLikeParser;
 use DrevOps\Helpers\InheritanceResolver;
+use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
 use PHP_CodeSniffer\Sniffs\Sniff;
 
@@ -15,6 +17,11 @@ use PHP_CodeSniffer\Sniffs\Sniff;
  * to either snake_case or camelCase format based on configuration.
  */
 abstract class AbstractVariableNamingSniff implements Sniff {
+
+  /**
+   * Tokens that declare a function with its own parameters.
+   */
+  protected const array FUNCTION_TOKENS = [T_FUNCTION, T_CLOSURE, T_FN];
 
   /**
    * The naming convention to enforce.
@@ -197,71 +204,27 @@ abstract class AbstractVariableNamingSniff implements Sniff {
   }
 
   /**
-   * Get all parameter names for a function/method.
+   * Get the variable names declared by a parameter list or a 'use' clause.
    *
    * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
    * @param int $function_ptr
-   *   The position of the function token.
+   *   The position of the function, closure, arrow function or closure 'use'
+   *   token.
    *
    * @return array<string>
-   *   Array of parameter variable names (including $).
+   *   Array of parameter variable names (including $). Empty for a 'use'
+   *   clause without parentheses.
    */
   protected function getParameterNames(File $phpcs_file, int $function_ptr): array {
-    $tokens = $phpcs_file->getTokens();
-
-    // @codeCoverageIgnoreStart
-    // PHPCS always sets parenthesis_opener and parenthesis_closer for valid
-    // function/closure tokens. This check is defensive code for malformed
-    // token streams.
-    if (!isset($tokens[$function_ptr]['parenthesis_opener']) ||
-      !isset($tokens[$function_ptr]['parenthesis_closer'])) {
+    try {
+      return array_column($phpcs_file->getMethodParameters($function_ptr), 'name');
+    }
+    catch (RuntimeException) {
+      // PHP_CodeSniffer rejects a 'use' clause without parentheses, which
+      // appears while the code is still being typed.
       return [];
     }
-    // @codeCoverageIgnoreEnd
-    $param_start = $tokens[$function_ptr]['parenthesis_opener'];
-    $param_end = $tokens[$function_ptr]['parenthesis_closer'];
-
-    $param_names = [];
-
-    for ($i = $param_start + 1; $i < $param_end; $i++) {
-      if ($tokens[$i]['code'] === T_VARIABLE) {
-        $param_names[] = $tokens[$i]['content'];
-      }
-    }
-
-    return $param_names;
-  }
-
-  /**
-   * Check if a variable is within a function's parameter list.
-   *
-   * @param \PHP_CodeSniffer\Files\File $phpcs_file
-   *   The file being scanned.
-   * @param int $stack_ptr
-   *   The position of the variable token.
-   * @param int $function_ptr
-   *   The position of the function token.
-   *
-   * @return bool
-   *   TRUE if variable is in parameter list, FALSE otherwise.
-   */
-  protected function isInParameterList(File $phpcs_file, int $stack_ptr, int $function_ptr): bool {
-    $tokens = $phpcs_file->getTokens();
-
-    // @codeCoverageIgnoreStart
-    // PHPCS always sets parenthesis_opener and parenthesis_closer for valid
-    // function/closure tokens. This check is defensive code for malformed
-    // token streams.
-    if (!isset($tokens[$function_ptr]['parenthesis_opener']) ||
-      !isset($tokens[$function_ptr]['parenthesis_closer'])) {
-      return FALSE;
-    }
-    // @codeCoverageIgnoreEnd
-    $param_start = $tokens[$function_ptr]['parenthesis_opener'];
-    $param_end = $tokens[$function_ptr]['parenthesis_closer'];
-
-    return ($stack_ptr > $param_start && $stack_ptr < $param_end);
   }
 
   /**
@@ -273,21 +236,85 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    *   The position of the variable token.
    *
    * @return int|false
-   *   The position of the function token, or FALSE if the variable is not in
-   *   a parameter list.
+   *   The position of the function, closure or arrow function token, or FALSE
+   *   if the variable is not in a parameter list.
    */
   protected function findParameterListOwner(File $phpcs_file, int $stack_ptr): int|false {
-    $function_ptr = $phpcs_file->findPrevious([T_FUNCTION, T_CLOSURE], $stack_ptr - 1);
+    $tokens = $phpcs_file->getTokens();
 
-    if ($function_ptr !== FALSE && $this->isInParameterList($phpcs_file, $stack_ptr, $function_ptr)) {
-      return $function_ptr;
+    foreach (array_reverse(array_keys($tokens[$stack_ptr]['nested_parenthesis'] ?? [])) as $opener_ptr) {
+      $owner_ptr = $tokens[$opener_ptr]['parenthesis_owner'] ?? NULL;
+
+      if ($owner_ptr === NULL || !in_array($tokens[$owner_ptr]['code'], self::FUNCTION_TOKENS, TRUE)) {
+        continue;
+      }
+
+      // A closure used as a default value or an attribute argument has its
+      // body inside the list, so a token in that body is not a parameter.
+      $scope_ptr = array_key_last($tokens[$stack_ptr]['conditions'] ?? []);
+
+      return $scope_ptr !== NULL && $scope_ptr > $opener_ptr ? FALSE : $owner_ptr;
     }
 
     return FALSE;
   }
 
   /**
-   * Find the enclosing function for a variable.
+   * Find the innermost function whose body contains a token.
+   *
+   * Closures and arrow functions count as functions. A parameter list is not
+   * part of a body, and neither is a class body nested in a function.
+   *
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
+   *   The file being scanned.
+   * @param int $stack_ptr
+   *   The position of the token.
+   *
+   * @return int|false
+   *   The position of the function, closure or arrow function token, or FALSE
+   *   if the token is not in a function body.
+   */
+  protected function findEnclosingFunction(File $phpcs_file, int $stack_ptr): int|false {
+    $tokens = $phpcs_file->getTokens();
+    $function_ptr = FALSE;
+    $scope_ptr = 0;
+
+    // Conditions run from the outermost scope inwards, so the last function
+    // or class-like wins.
+    foreach ($tokens[$stack_ptr]['conditions'] ?? [] as $condition_ptr => $condition_code) {
+      if (in_array($condition_code, self::FUNCTION_TOKENS, TRUE)) {
+        $function_ptr = $condition_ptr;
+        $scope_ptr = $condition_ptr;
+      }
+      elseif (in_array($condition_code, ClassLikeParser::CLASS_LIKE_TOKENS, TRUE)) {
+        $function_ptr = FALSE;
+        $scope_ptr = $condition_ptr;
+      }
+    }
+
+    // PHP_CodeSniffer leaves arrow functions out of conditions, so look for
+    // the innermost one inside that scope whose body contains the token.
+    $arrow_ptr = $phpcs_file->findPrevious(T_FN, $stack_ptr - 1, $scope_ptr);
+
+    while ($arrow_ptr !== FALSE) {
+      if ($tokens[$arrow_ptr]['scope_opener'] < $stack_ptr && $tokens[$arrow_ptr]['scope_closer'] >= $stack_ptr) {
+        return $arrow_ptr;
+      }
+
+      $arrow_ptr = $phpcs_file->findPrevious(T_FN, $arrow_ptr - 1, $scope_ptr);
+    }
+
+    return $function_ptr;
+  }
+
+  /**
+   * Find the function that declares a variable as a parameter.
+   *
+   * A variable in a parameter list belongs to that list's function. A variable
+   * in a body belongs to the innermost function that has it as a parameter.
+   *
+   * The lookup moves to the enclosing scope only through functions that
+   * capture the variable: closures that list it in 'use', and arrow functions.
    *
    * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
@@ -295,20 +322,65 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    *   The position of the variable token.
    *
    * @return int|false
-   *   The position of the enclosing function token, or FALSE if not found.
+   *   The position of the function, closure or arrow function token, or FALSE
+   *   if the variable is not a parameter.
    */
-  protected function findEnclosingFunction(File $phpcs_file, int $stack_ptr): int|false {
-    $tokens = $phpcs_file->getTokens();
+  protected function findDeclaringFunction(File $phpcs_file, int $stack_ptr): int|false {
+    $function_ptr = $this->findParameterListOwner($phpcs_file, $stack_ptr);
 
-    // First, check conditions (for variables in method body).
-    foreach ($tokens[$stack_ptr]['conditions'] ?? [] as $ptr => $code) {
-      if ($code === T_FUNCTION || $code === T_CLOSURE) {
-        return $ptr;
-      }
+    if ($function_ptr !== FALSE) {
+      return $function_ptr;
     }
 
-    // Search backwards (for variables in parameter list).
-    return $phpcs_file->findPrevious([T_FUNCTION, T_CLOSURE], $stack_ptr - 1);
+    $var_name = $phpcs_file->getTokens()[$stack_ptr]['content'];
+    $function_ptr = $this->findEnclosingFunction($phpcs_file, $stack_ptr);
+
+    while ($function_ptr !== FALSE) {
+      if (in_array($var_name, $this->getParameterNames($phpcs_file, $function_ptr), TRUE)) {
+        return $function_ptr;
+      }
+
+      if (!$this->capturesVariable($phpcs_file, $function_ptr, $var_name)) {
+        return FALSE;
+      }
+
+      $function_ptr = $this->findEnclosingFunction($phpcs_file, $function_ptr);
+    }
+
+    return FALSE;
+  }
+
+  /**
+   * Check if a function takes a variable from the enclosing scope.
+   *
+   * Arrow functions capture every variable of the enclosing scope. Closures
+   * capture the variables listed in their 'use' clause. Named functions and
+   * methods capture nothing.
+   *
+   * @param \PHP_CodeSniffer\Files\File $phpcs_file
+   *   The file being scanned.
+   * @param int $function_ptr
+   *   The position of the function, closure or arrow function token.
+   * @param string $var_name
+   *   The variable name (including $).
+   *
+   * @return bool
+   *   TRUE if the variable comes from the enclosing scope, FALSE otherwise.
+   */
+  protected function capturesVariable(File $phpcs_file, int $function_ptr, string $var_name): bool {
+    $tokens = $phpcs_file->getTokens();
+
+    if ($tokens[$function_ptr]['code'] === T_FN) {
+      return TRUE;
+    }
+
+    if ($tokens[$function_ptr]['code'] !== T_CLOSURE) {
+      return FALSE;
+    }
+
+    $use_ptr = $phpcs_file->findNext(T_USE, $tokens[$function_ptr]['parenthesis_closer'] + 1, $tokens[$function_ptr]['scope_opener']);
+
+    return $use_ptr !== FALSE && in_array($var_name, $this->getParameterNames($phpcs_file, $use_ptr), TRUE);
   }
 
   /**
@@ -481,7 +553,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    * @param int $stack_ptr
    *   The position of the variable token.
    * @param bool $include_usage_in_body
-   *   Whether to check if variable usage in body matches a parameter name.
+   *   Whether a use of a parameter in a body counts as a parameter.
    *   TRUE: Consider both declaration and usage (for LocalVariableSniff).
    *   FALSE: Only check declaration in signature (for ParameterSniff).
    *
@@ -489,36 +561,16 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    *   TRUE if parameter, FALSE otherwise.
    */
   protected function isParameter(File $phpcs_file, int $stack_ptr, bool $include_usage_in_body = FALSE): bool {
-    $tokens = $phpcs_file->getTokens();
-
     // Check if preceded by visibility modifier (promoted property).
     if ($this->isPromotedProperty($phpcs_file, $stack_ptr)) {
       return FALSE;
     }
 
-    // If variable is within parameter parentheses, it's a parameter.
-    if ($this->findParameterListOwner($phpcs_file, $stack_ptr) !== FALSE) {
-      return TRUE;
-    }
-
-    // If we're not checking body usage, stop here.
     if (!$include_usage_in_body) {
-      return FALSE;
+      return $this->findParameterListOwner($phpcs_file, $stack_ptr) !== FALSE;
     }
 
-    // Variable is in function body. Find the enclosing function.
-    $function_ptr = $this->findEnclosingFunction($phpcs_file, $stack_ptr);
-
-    if ($function_ptr === FALSE) {
-      // Not in a function/method - can't be a parameter.
-      return FALSE;
-    }
-
-    // Check if variable matches a parameter name (used in method body).
-    $var_name = $tokens[$stack_ptr]['content'];
-    $param_names = $this->getParameterNames($phpcs_file, $function_ptr);
-
-    return in_array($var_name, $param_names, TRUE);
+    return $this->findDeclaringFunction($phpcs_file, $stack_ptr) !== FALSE;
   }
 
   /**
@@ -529,7 +581,8 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    * parameter of the same name. Renamed and additional parameters are not
    * inherited. When no resolved ancestor declares the method and an ancestor
    * cannot be resolved, every parameter of the method counts as inherited.
-   * Applies to the parameter in the signature and to its uses in the body.
+   * Applies to the parameter in the signature and to its uses in the body,
+   * including closures that import it and arrow functions that capture it.
    *
    * @param \PHP_CodeSniffer\Files\File $phpcs_file
    *   The file being scanned.
@@ -540,26 +593,16 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    *   TRUE if inherited parameter, FALSE otherwise.
    */
   protected function isInheritedParameter(File $phpcs_file, int $stack_ptr): bool {
-    $function_ptr = $this->findParameterListOwner($phpcs_file, $stack_ptr);
+    $function_ptr = $this->findDeclaringFunction($phpcs_file, $stack_ptr);
 
     if ($function_ptr === FALSE) {
-      $function_ptr = $this->findEnclosingFunction($phpcs_file, $stack_ptr);
-    }
-
-    if ($function_ptr === FALSE) {
-      return FALSE;
-    }
-
-    $var_name = $phpcs_file->getTokens()[$stack_ptr]['content'];
-
-    if (!in_array($var_name, $this->getParameterNames($phpcs_file, $function_ptr), TRUE)) {
       return FALSE;
     }
 
     $this->inheritanceResolver ??= new InheritanceResolver();
     $inherited_names = $this->inheritanceResolver->getInheritedParameterNames($phpcs_file, $function_ptr);
 
-    return $inherited_names === NULL || in_array($var_name, $inherited_names, TRUE);
+    return $inherited_names === NULL || in_array($phpcs_file->getTokens()[$stack_ptr]['content'], $inherited_names, TRUE);
   }
 
 }

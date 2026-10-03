@@ -132,6 +132,17 @@ class ParameterNamingSniffTest extends UnitTestCase {
         '<?php function test($_prefixedParam) {}',
         FALSE,
       ],
+      'invalid_closure_parameter' => ['<?php $closure = function ($invalidParam) {};', TRUE],
+      'invalid_arrow_function_parameter' => ['<?php $double = fn($invalidParam) => $invalidParam * 2;', TRUE],
+      'valid_arrow_function_parameter' => ['<?php $double = fn($valid_param) => $valid_param * 2;', FALSE],
+      'invalid_anonymous_class_method_parameter' => ['<?php function factory() { return new class { public function run($invalidParam) {} }; }', TRUE],
+      'unresolved_parent_closure_parameter' => ['<?php class Test extends BaseClass { public function test() { return function ($invalidParam) {}; } }', TRUE],
+      'unresolved_parent_arrow_function_parameter' => [
+        '<?php class Test extends BaseClass { public function test() { return fn($invalidParam) => $invalidParam; } }',
+        TRUE,
+      ],
+      'closure_use_clause' => ['<?php $invalidVar = 1; $closure = function () use ($invalidVar) { return $invalidVar; };', FALSE],
+      'arrow_function_capture' => ['<?php $double = fn($valid_param) => $valid_param * $invalidFactor;', FALSE],
     ];
   }
 

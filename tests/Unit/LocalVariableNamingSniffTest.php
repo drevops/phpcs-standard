@@ -126,6 +126,31 @@ class LocalVariableNamingSniffTest extends UnitTestCase {
         '<?php function test() { $_internalVar = 1; }',
         FALSE,
       ],
+      'closure_parameter_used_in_body' => [
+        '<?php class Test { public function test() { $closure = function ($closureParam) { return $closureParam; }; } }',
+        FALSE,
+      ],
+      'arrow_function_parameter_used_in_body' => ['<?php class Test { public function test() { $double = fn($arrowParam) => $arrowParam * 2; } }', FALSE],
+      'anonymous_class_method_parameter_used_in_body' => [
+        '<?php function factory() { return new class { public function run($anonymousParam) { return $anonymousParam; } }; }',
+        FALSE,
+      ],
+      'parameter_imported_into_closure' => [
+        '<?php class Test { public function test($outerParam) { return function () use ($outerParam) { return $outerParam; }; } }',
+        FALSE,
+      ],
+      'parameter_captured_by_arrow_function' => [
+        '<?php class Test { public function test($capturedParam) { return fn($item_value) => $item_value . $capturedParam; } }',
+        FALSE,
+      ],
+      'parameter_not_imported_into_closure' => [
+        '<?php class Test { public function test($outerParam) { return function () { return $outerParam; }; } }',
+        TRUE,
+      ],
+      'local_variable_in_closure_invalid' => ['<?php $closure = function () { $invalidVar = 1; };', TRUE],
+      'local_variable_in_arrow_function_invalid' => ['<?php $make = fn() => $invalidVar = 1;', TRUE],
+      'global_variable_named_like_earlier_parameter' => ['<?php function test($invalidParam) {} $invalidParam = 1;', TRUE],
+      'closure_use_clause_without_parentheses' => ['<?php function test($param) { $closure = function () use { return $param; }; }', FALSE],
     ];
   }
 
