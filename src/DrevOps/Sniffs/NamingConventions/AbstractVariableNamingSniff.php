@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace DrevOps\Sniffs\NamingConventions;
 
 use DrevOps\Helpers\ClassLikeParser;
+use DrevOps\Helpers\DrupalRootResolver;
 use DrevOps\Helpers\InheritanceResolver;
 use PHP_CodeSniffer\Exceptions\RuntimeException;
 use PHP_CodeSniffer\Files\File;
@@ -31,6 +32,17 @@ abstract class AbstractVariableNamingSniff implements Sniff {
    * @var string
    */
   public $format = 'snakeCase';
+
+  /**
+   * The Drupal root for looking up ancestors in Drupal extension namespaces.
+   *
+   * Unset detects the root from the 'drupal/core' Composer package. A path
+   * replaces the detected root, and a relative path resolves from the working
+   * directory. FALSE turns the lookup off.
+   *
+   * @var string|bool|null
+   */
+  public $drupalRoot;
 
   /**
    * Reserved PHP variable names that should not be validated.
@@ -599,7 +611,7 @@ abstract class AbstractVariableNamingSniff implements Sniff {
       return FALSE;
     }
 
-    $this->inheritanceResolver ??= new InheritanceResolver();
+    $this->inheritanceResolver ??= new InheritanceResolver(drupal_root: (new DrupalRootResolver())->resolve($this->drupalRoot));
     $inherited_names = $this->inheritanceResolver->getInheritedParameterNames($phpcs_file, $function_ptr);
 
     return $inherited_names === NULL || in_array($phpcs_file->getTokens()[$stack_ptr]['content'], $inherited_names, TRUE);

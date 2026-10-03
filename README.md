@@ -193,10 +193,60 @@ Ancestors are looked up in this order:
 1. The file being checked.
 2. Classes already loaded by PHP_CodeSniffer, such as PHP's built-in classes and interfaces and PHP_CodeSniffer's own `Sniff` interface.
 3. Source files that your project's Composer autoloader maps. These files are tokenized, never included, so none of your code runs.
+4. In a Drupal project, source files of modules, profiles and themes, tokenized the same way (see [Drupal projects](#drupal-projects)).
 
-If an ancestor can't be found (for example a Drupal module class, which Composer doesn't autoload) and none of the ancestors that were found declares the method, all of the method's parameters are skipped. Private methods are always checked, because they can't implement or override an inherited signature.
+If an ancestor can't be found and none of the ancestors that were found declares the method, all of the method's parameters are skipped. Private methods are always checked, because they can't implement or override an inherited signature.
 
 Results depend on files other than the one being checked. If you run `phpcs` with `--cache`, clear the cache after renaming a parameter in an ancestor.
+
+### Drupal projects
+
+Drupal registers the namespaces of modules, profiles and themes at runtime rather than through Composer, so Composer can't find base classes such as `Drupal\views\Plugin\views\field\FieldPluginBase`. `ParameterNaming` maps those namespaces itself: it finds every `*.info.yml` file under the Drupal root, then maps `Drupal\<extension>\` to the extension's `src` directory and `Drupal\Tests\<extension>\` to its `tests/src` directory.
+
+```php
+namespace Drupal\my_module\Plugin\views\field;
+
+use Drupal\views\Plugin\views\field\FieldPluginBase;
+use Drupal\views\ResultRow;
+
+class MyField extends FieldPluginBase {
+    public function render(ResultRow $resultRow) {}    // ✗ Error: NotSnakeCase, FieldPluginBase names it $values
+    public function formatLabel(string $labelText) {}  // ✗ Error: NotSnakeCase, no ancestor declares formatLabel()
+}
+```
+
+The search covers `core/modules`, `core/profiles`, `core/themes`, `modules`, `profiles`, `themes`, and `modules`, `profiles` and `themes` under each `sites/*` directory, including submodules and test modules. When 2 extensions share a machine name, the one Drupal loads wins: `sites/*` over the top-level directories, and those over `core`. The scan runs at most once per `phpcs` run, and only when Composer can't find an ancestor in a `Drupal\` namespace.
+
+The Drupal root is detected through Composer, as the parent of the directory that `drupal/core` is installed into, so most projects don't need to configure anything. Set `drupalRoot` when the Drupal codebase lives somewhere else:
+
+```xml
+<rule ref="DrevOps">
+  <properties>
+    <property name="drupalRoot" value="other/deeper/folder"/>
+  </properties>
+</rule>
+```
+
+| `drupalRoot` | Behaviour |
+|---|---|
+| Not set | The parent of the `drupal/core` install path: `web/core` gives `web`, `docroot/core` gives `docroot`, and `core` gives the project root. Without `drupal/core`, there's no discovery. |
+| A path | Replaces the detected root. A relative path resolves from the working directory. A path without `core/lib/Drupal.php` is reported as an error. |
+| `false` | No discovery. |
+
+Namespaces outside Drupal extensions aren't discovered. Core's own test base classes, such as `Drupal\KernelTests\KernelTestBase` and `Drupal\Tests\BrowserTestBase`, live in `core/tests`, so they can't be found either: a test class method that none of the found ancestors declares has all of its parameters skipped. Add those namespaces to your project's Composer autoload and run `composer dump-autoload`, so `ParameterNaming` finds them through Composer:
+
+```json
+"autoload-dev": {
+    "psr-4": {
+        "Drupal\\Tests\\": "web/core/tests/Drupal/Tests",
+        "Drupal\\KernelTests\\": "web/core/tests/Drupal/KernelTests",
+        "Drupal\\FunctionalTests\\": "web/core/tests/Drupal/FunctionalTests",
+        "Drupal\\FunctionalJavascriptTests\\": "web/core/tests/Drupal/FunctionalJavascriptTests"
+    }
+}
+```
+
+The same works for any other namespace that Composer doesn't map.
 
 ### Error codes
 

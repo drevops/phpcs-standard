@@ -844,6 +844,69 @@ class AbstractVariableNamingSniffTest extends UnitTestCase {
   }
 
   /**
+   * Test isInheritedParameter method with the drupalRoot property.
+   *
+   * The class extends a Drupal module class that only the Drupal namespace
+   * map locates.
+   *
+   * @param string|bool|null $drupal_root
+   *   The drupalRoot property value.
+   * @param string $variable_name
+   *   Variable name to check.
+   * @param bool $expected
+   *   Expected result.
+   */
+  #[DataProvider('dataProviderIsInheritedParameterDrupalRoot')]
+  public function testIsInheritedParameterDrupalRoot(string|bool|null $drupal_root, string $variable_name, bool $expected): void {
+    $file = $this->processCode('<?php namespace Drupal\my_module; use Drupal\views\Plugin\views\field\FieldPluginBase; class Test extends FieldPluginBase { public function render($values, $extraParam) {} public function formatLabel($labelText) {} }');
+    $variable_ptr = $this->findVariableToken($file, $variable_name);
+    $sniff = new ParameterNamingSniff();
+    $sniff->drupalRoot = $drupal_root;
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('isInheritedParameter');
+    $result = $method->invoke($sniff, $file, $variable_ptr);
+    $this->assertSame($expected, $result);
+  }
+
+  /**
+   * Data provider for isInheritedParameter tests with the drupalRoot property.
+   *
+   * Relative paths resolve from the project root, which is the working
+   * directory of the test run.
+   *
+   * @return array<string, array<mixed>>
+   *   Test cases.
+   */
+  public static function dataProviderIsInheritedParameterDrupalRoot(): array {
+    $drupal_root = __DIR__ . '/../Fixtures/Drupal';
+
+    return [
+      'absolute_root_upstream_parameter' => [$drupal_root, 'values', TRUE],
+      'absolute_root_added_parameter' => [$drupal_root, 'extraParam', FALSE],
+      'absolute_root_own_method' => [$drupal_root, 'labelText', FALSE],
+      'relative_root_own_method' => ['tests/Fixtures/Drupal', 'labelText', FALSE],
+      'false_own_method' => [FALSE, 'labelText', TRUE],
+      'not_set_own_method' => [NULL, 'labelText', TRUE],
+    ];
+  }
+
+  /**
+   * Test that isInheritedParameter() throws exception for an invalid root.
+   */
+  public function testIsInheritedParameterThrowsExceptionForInvalidDrupalRoot(): void {
+    $file = $this->processCode('<?php class Test { public function test($parameter) {} }');
+    $variable_ptr = $this->findVariableToken($file, 'parameter');
+    $sniff = new ParameterNamingSniff();
+    $sniff->drupalRoot = 'tests/Fixtures';
+    $reflection = new \ReflectionClass($sniff);
+    $method = $reflection->getMethod('isInheritedParameter');
+
+    $this->expectException(\RuntimeException::class);
+    $this->expectExceptionMessage('Invalid drupalRoot "tests/Fixtures": core/lib/Drupal.php not found.');
+    $method->invoke($sniff, $file, $variable_ptr);
+  }
+
+  /**
    * Test isStaticPropertyAccess method.
    *
    * @param string $code

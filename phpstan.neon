@@ -14,9 +14,15 @@ parameters:
     - vendor/squizlabs/php_codesniffer
 
   excludePaths:
-    # The fixture extends a missing class on purpose, and PHPStan cannot ignore
-    # errors about unknown parent classes.
-    - tests/Fixtures/InheritedParametersCrossFile.php
+    analyse:
+      # The Drupal fixture classes extend classes outside the fixture tree on
+      # purpose, and the duplicated module declares the same class twice. The
+      # tree is still scanned, so tests can reference its classes.
+      - tests/Fixtures/Drupal
+    analyseAndScan:
+      # The fixture extends a missing class on purpose, and PHPStan cannot
+      # ignore errors about unknown parent classes.
+      - tests/Fixtures/InheritedParametersCrossFile.php
 
   ignoreErrors:
     -

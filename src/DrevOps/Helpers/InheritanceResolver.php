@@ -13,7 +13,8 @@ use PHP_CodeSniffer\Files\File;
  *
  * Ancestors are looked up in the file being checked, then among the classes
  * already loaded in the process, then in the source files located by the
- * Composer class loaders. Located files are tokenized and never included, so
+ * Composer class loaders, then in the source files of Drupal extensions when
+ * a Drupal root is given. Located files are tokenized and never included, so
  * no project code is executed.
  */
 final class InheritanceResolver {
@@ -29,6 +30,11 @@ final class InheritanceResolver {
    * @var \Closure(string): (string|null)
    */
   protected \Closure $sourceLocator;
+
+  /**
+   * Locates the source files of classes in Drupal extension namespaces.
+   */
+  protected ?DrupalNamespaceMap $drupalNamespaceMap;
 
   /**
    * Looked-up ancestor declarations keyed by lowercase class name.
@@ -71,10 +77,14 @@ final class InheritanceResolver {
    * @param (\Closure(string): (string|null))|null $source_locator
    *   Returns the source file path of a class, or NULL when it is unknown.
    *   Defaults to the Composer class loaders.
+   * @param string|null $drupal_root
+   *   The Drupal root whose extension namespaces are searched when the source
+   *   locator does not know a class, or NULL to skip them.
    */
-  public function __construct(?\Closure $source_locator = NULL) {
+  public function __construct(?\Closure $source_locator = NULL, ?string $drupal_root = NULL) {
     $this->parser = new ClassLikeParser();
     $this->sourceLocator = $source_locator ?? self::locateWithComposer(...);
+    $this->drupalNamespaceMap = $drupal_root === NULL ? NULL : new DrupalNamespaceMap($drupal_root);
   }
 
   /**
@@ -249,7 +259,7 @@ final class InheritanceResolver {
    */
   protected function parseDeclaration(string $class_name, File $phpcs_file): ?ClassLikeDeclaration {
     try {
-      $path = ($this->sourceLocator)($class_name);
+      $path = ($this->sourceLocator)($class_name) ?? $this->drupalNamespaceMap?->findFile($class_name);
 
       if (!is_string($path)) {
         return NULL;
